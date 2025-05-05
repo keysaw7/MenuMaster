@@ -123,8 +123,8 @@ export default function NewDailyMenuPage() {
   const [menuDate, setMenuDate] = useState<string>(
     new Date().toISOString().split('T')[0]
   );
-  const [activeTab, setActiveTab] = useState<'ingredients' | 'menu'>('ingredients');
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [city, setCity] = useState<string>('Paris,fr');
+  const [showMenu, setShowMenu] = useState(false);
 
   // Charger les restaurants de l'utilisateur
   useEffect(() => {
@@ -140,17 +140,6 @@ export default function NewDailyMenuPage() {
           setSelectedRestaurant('1');
           setLoading(false);
         }, 500);
-        
-        // Dans un environnement réel, on utiliserait cette requête API :
-        // const response = await fetch('/api/restaurants');
-        // if (!response.ok) {
-        //   throw new Error('Erreur lors de la récupération des restaurants');
-        // }
-        // const data = await response.json();
-        // setRestaurants(data.restaurants);
-        // if (data.restaurants.length > 0) {
-        //   setSelectedRestaurant(data.restaurants[0].id);
-        // }
       } catch (err) {
         setError('Impossible de charger vos restaurants');
         console.error(err);
@@ -177,6 +166,63 @@ export default function NewDailyMenuPage() {
     fetchIngredients();
   }, [selectedRestaurant]);
 
+  // Mettre à jour la météo lorsque la date change
+  useEffect(() => {
+    const fetchWeather = async () => {
+      try {
+        setLoading(true);
+        // Afficher information de débogage
+        console.log(`Récupération de la météo pour: ${menuDate} à ${city}`);
+        
+        // Utiliser la nouvelle API météo avec la ville sélectionnée
+        const response = await fetch(`/api/weather?date=${menuDate}&city=${encodeURIComponent(city)}`);
+        
+        if (!response.ok) {
+          console.error(`Erreur HTTP: ${response.status} ${response.statusText}`);
+          throw new Error(`Erreur lors de la récupération des données météo: ${response.status}`);
+        }
+        
+        const weatherData = await response.json();
+        console.log('Données météo reçues:', weatherData);
+        
+        // Vérifier si une erreur a été renvoyée par l'API
+        if (weatherData.error) {
+          console.warn('Avertissement météo:', weatherData.error);
+          // On utilise quand même les données car notre API renvoie des données par défaut même en cas d'erreur
+        }
+        
+        // Vérifier les valeurs reçues
+        const temp = weatherData.temperature;
+        if (typeof temp !== 'number' || temp < -50 || temp > 50) {
+          console.warn(`Température anormale reçue: ${temp}°C, utilisation de données simulées`);
+          throw new Error('Données météo invalides');
+        }
+        
+        setWeather({
+          temperature: weatherData.temperature,
+          condition: weatherData.condition || 'Inconnu',
+          icon: weatherData.icon || '🌡️'
+        });
+      } catch (error) {
+        console.error('Erreur météo:', error);
+        // En cas d'erreur, utiliser les données simulées avec un message d'erreur
+        setWeather({
+          ...mockWeather,
+          temperature: Math.floor(Math.random() * 10) + 10, // Température plus réaliste entre 10 et 20°C
+          condition: 'Données simulées'
+        });
+        
+        // Afficher un message d'erreur temporaire
+        setError(`Impossible de récupérer les données météo pour ${city}. Vérifiez le format de la ville (ex: Paris,fr)`);
+        setTimeout(() => setError(null), 5000); // Effacer le message après 5 secondes
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchWeather();
+  }, [menuDate, city, mockWeather]);
+
   const handleIngredientToggle = (ingredientId: string) => {
     setSelectedIngredients(prev => {
       if (prev.includes(ingredientId)) {
@@ -200,354 +246,222 @@ export default function NewDailyMenuPage() {
     setTimeout(() => {
       setGeneratedMenu(mockGeneratedMenu);
       setGenerating(false);
-      setStep(2);
-      setActiveTab('menu');
+      setShowMenu(true);
     }, 1500);
-
-    // Dans un environnement réel, on utiliserait cette requête API :
-    // try {
-    //   const response = await fetch('/api/daily-menu/generate', {
-    //     method: 'POST',
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //     },
-    //     body: JSON.stringify({
-    //       restaurantId: selectedRestaurant,
-    //       date: menuDate,
-    //       ingredients: selectedIngredients,
-    //       weather: weather,
-    //     }),
-    //   });
-    //
-    //   if (!response.ok) {
-    //     const errorData = await response.json();
-    //     throw new Error(errorData.error || 'Erreur lors de la génération du menu');
-    //   }
-    //
-    //   const data = await response.json();
-    //   setGeneratedMenu(data.menu);
-    //   setStep(2);
-    //   setActiveTab('menu');
-    // } catch (err) {
-    //   if (err instanceof Error) {
-    //     setError(err.message);
-    //   } else {
-    //     setError('Une erreur est survenue lors de la génération du menu');
-    //   }
-    //   console.error(err);
-    // } finally {
-    //   setGenerating(false);
-    // }
   };
 
-  const handleSaveMenu = async () => {
-    if (!generatedMenu || !selectedRestaurant) {
-      setError('Aucun menu à enregistrer');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    // Simuler la sauvegarde du menu
-    setTimeout(() => {
-      setLoading(false);
-      setStep(3);
-    }, 1000);
-
-    // Dans un environnement réel, on utiliserait cette requête API :
-    // try {
-    //   const menuToSave = {
-    //     ...generatedMenu,
-    //     restaurantId: selectedRestaurant,
-    //     date: menuDate,
-    //     price: menuPrice ? parseFloat(menuPrice) : undefined,
-    //     isPublished: false,
-    //   };
-    //
-    //   const response = await fetch('/api/daily-menu', {
-    //     method: 'POST',
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //     },
-    //     body: JSON.stringify(menuToSave),
-    //   });
-    //
-    //   if (!response.ok) {
-    //     const errorData = await response.json();
-    //     throw new Error(errorData.error || 'Erreur lors de l\'enregistrement du menu');
-    //   }
-    //
-    //   setStep(3);
-    // } catch (err) {
-    //   if (err instanceof Error) {
-    //     setError(err.message);
-    //   } else {
-    //     setError('Une erreur est survenue lors de l\'enregistrement du menu');
-    //   }
-    //   console.error(err);
-    // } finally {
-    //   setLoading(false);
-    // }
-  };
-
-  const handlePublishMenu = async () => {
+  const handleSaveMenu = () => {
     if (!generatedMenu) return;
     
-    // Simuler la publication du menu
-    setTimeout(() => {
-      router.push('/dashboard');
-    }, 1000);
+    // Créer un objet menu avec toutes les informations nécessaires
+    const menuToSave = {
+      id: `menu_${Date.now()}`, // Générer un ID unique
+      restaurantId: selectedRestaurant,
+      restaurantName: restaurants.find(r => r.id === selectedRestaurant)?.name || 'Restaurant',
+      date: menuDate,
+      starters: generatedMenu.starters,
+      mains: generatedMenu.mains,
+      desserts: generatedMenu.desserts,
+      price: menuPrice ? parseFloat(menuPrice) : undefined,
+      isPublished: false,
+      weather: weather || undefined
+    };
+    
+    console.log('Menu à sauvegarder:', menuToSave);
+    
+    // Sauvegarder dans localStorage
+    if (typeof window !== 'undefined') {
+      try {
+        // Récupérer les menus existants ou initialiser un tableau vide
+        let savedMenus = [];
+        const savedMenusJSON = localStorage.getItem('savedDailyMenus');
+        
+        if (savedMenusJSON) {
+          savedMenus = JSON.parse(savedMenusJSON);
+          console.log('Menus existants récupérés:', savedMenus);
+        } else {
+          console.log('Aucun menu existant trouvé');
+        }
+        
+        // Vérifier que savedMenus est bien un tableau
+        if (!Array.isArray(savedMenus)) {
+          console.warn('savedMenus n\'est pas un tableau, initialisation d\'un nouveau tableau');
+          savedMenus = [];
+        }
+        
+        // Ajouter le nouveau menu
+        savedMenus.push(menuToSave);
+        console.log('Menus après ajout:', savedMenus);
+        
+        // Sauvegarder le tableau mis à jour
+        localStorage.setItem('savedDailyMenus', JSON.stringify(savedMenus));
+        console.log('Menus sauvegardés avec succès dans localStorage');
+        
+        // Afficher une notification de succès
+        alert('Menu sauvegardé avec succès !');
+        
+        // Rediriger vers le dashboard des menus
+        router.push('/dashboard/daily-menu');
+      } catch (error) {
+        console.error('Erreur lors de la sauvegarde du menu:', error);
+        setError('Une erreur est survenue lors de la sauvegarde du menu');
+      }
+    }
   };
 
-  const renderIngredientTab = () => (
-    <div className="mt-6">
-      <div className="mb-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-2">Ingrédients disponibles</h3>
-        <p className="text-sm text-gray-600 mb-4">
-          Sélectionnez les ingrédients que vous souhaitez mettre en valeur dans votre menu du jour. 
-          Notre Ami intelligent créera un menu qui met en avant ces ingrédients, en tenant compte de la météo.
-        </p>
-        
-        <div className="mt-4 flex flex-wrap gap-2 max-h-80 overflow-y-auto p-2 border border-gray-200 rounded-md bg-gray-50">
-          {loading ? (
-            <div className="w-full py-10 flex justify-center items-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500"></div>
-            </div>
-          ) : (
-            availableIngredients.map(ingredient => (
-              <div 
-                key={ingredient.id}
-                className={`flex items-center p-3 rounded-lg cursor-pointer transition-all ${
-                  selectedIngredients.includes(ingredient.id)
-                    ? 'bg-indigo-100 border border-indigo-200'
-                    : 'bg-white border border-gray-200 hover:bg-gray-50'
-                }`}
-                onClick={() => handleIngredientToggle(ingredient.id)}
-              >
-                <input
-                  type="checkbox"
-                  checked={selectedIngredients.includes(ingredient.id)}
-                  onChange={() => {}}
-                  className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                />
-                <span className="ml-2 text-sm font-medium text-gray-700">{ingredient.name}</span>
-                <span className="ml-2 text-xs text-gray-500">
-                  {ingredient.quantity} {ingredient.unit}
-                </span>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-
-      <div className="mb-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-2">Informations météorologiques</h3>
-        <p className="text-sm text-gray-600 mb-4">
-          Conditions météorologiques prises en compte pour générer un menu adapté.
-        </p>
-        
-        {weather ? (
-          <div className="flex items-center bg-blue-50 p-4 rounded-lg">
-            <div className="text-4xl mr-4">{weather.icon}</div>
-            <div>
-              <div className="font-medium">{weather.condition}</div>
-              <div className="text-sm text-gray-600">{weather.temperature}°C</div>
-            </div>
+  const renderIngredientsList = () => (
+    <div className="mt-6 bg-white p-6 rounded-lg shadow-md">
+      <h3 className="text-xl font-bold text-gray-900 mb-4">Ingrédients disponibles</h3>
+      <p className="text-base text-gray-700 mb-4">
+        Sélectionnez les ingrédients que vous souhaitez mettre en valeur dans votre menu (optionnel).
+      </p>
+      
+      <div className="flex flex-wrap gap-3 max-h-96 overflow-y-auto p-2">
+        {loading ? (
+          <div className="w-full py-10 flex justify-center items-center">
+            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-indigo-500"></div>
           </div>
         ) : (
-          <div className="text-sm text-gray-500 italic">
-            Informations météo non disponibles
-          </div>
+          availableIngredients.map(ingredient => (
+            <div 
+              key={ingredient.id}
+              className={`flex items-center p-4 rounded-lg cursor-pointer transition-all ${
+                selectedIngredients.includes(ingredient.id)
+                  ? 'bg-indigo-100 border border-indigo-300 shadow-sm'
+                  : 'bg-gray-50 border border-gray-200 hover:bg-gray-100'
+              }`}
+              onClick={() => handleIngredientToggle(ingredient.id)}
+            >
+              <input
+                type="checkbox"
+                checked={selectedIngredients.includes(ingredient.id)}
+                onChange={() => {}}
+                className="h-5 w-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+              />
+              <span className="ml-3 text-base font-medium text-gray-700">{ingredient.name}</span>
+              <span className="ml-2 text-sm text-gray-500">
+                {ingredient.quantity} {ingredient.unit}
+              </span>
+            </div>
+          ))
         )}
       </div>
-
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={handleGenerateMenu}
-          disabled={generating || selectedIngredients.length === 0}
-          className={`px-6 py-3 text-white rounded-md shadow-sm ${
-            generating || selectedIngredients.length === 0
-              ? 'bg-indigo-400 cursor-not-allowed'
-              : 'bg-indigo-600 hover:bg-indigo-700'
-          } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
-        >
-          {generating ? (
-            <>
-              <span className="inline-block mr-2">
-                <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-              </span>
-              Génération en cours...
-            </>
-          ) : (
-            'Générer le menu'
-          )}
-        </button>
-      </div>
     </div>
   );
 
-  const renderMenuTab = () => (
-    <div className="mt-6">
-      {generatedMenu ? (
-        <div>
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Prix du menu (€)
-            </label>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={menuPrice}
-              onChange={(e) => setMenuPrice(e.target.value)}
-              className="w-40 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-              placeholder="Prix du menu"
-            />
-          </div>
+  const renderGeneratedMenu = () => {
+    if (!generatedMenu) return null;
 
-          <div className="mb-8">
-            <h3 className="text-xl font-semibold text-gray-900 mb-4">Menu proposé</h3>
-            
-            <div className="mb-6">
-              <h4 className="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2 mb-3">Entrées</h4>
-              <div className="space-y-4">
-                {generatedMenu.starters.map((starter, index) => (
-                  <div key={index} className="bg-white p-4 rounded-lg border border-gray-200">
-                    <h5 className="font-medium text-gray-900">{starter.name}</h5>
-                    <p className="text-sm text-gray-600 mt-1">{starter.description}</p>
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {starter.ingredients.map((ingredient, i) => (
-                        <span key={i} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                          {ingredient}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
+    return (
+      <div className="mt-8 bg-white p-6 rounded-lg shadow-md">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-gray-900">Menu généré</h2>
+          <div className="flex items-center">
+            <div className="mr-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Prix du menu (€)
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={menuPrice}
+                onChange={(e) => setMenuPrice(e.target.value)}
+                className="w-32 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-gray-900"
+                placeholder="Prix"
+              />
             </div>
-            
-            <div className="mb-6">
-              <h4 className="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2 mb-3">Plats</h4>
-              <div className="space-y-4">
-                {generatedMenu.mains.map((main, index) => (
-                  <div key={index} className="bg-white p-4 rounded-lg border border-gray-200">
-                    <h5 className="font-medium text-gray-900">{main.name}</h5>
-                    <p className="text-sm text-gray-600 mt-1">{main.description}</p>
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {main.ingredients.map((ingredient, i) => (
-                        <span key={i} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                          {ingredient}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            
-            <div>
-              <h4 className="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2 mb-3">Desserts</h4>
-              <div className="space-y-4">
-                {generatedMenu.desserts.map((dessert, index) => (
-                  <div key={index} className="bg-white p-4 rounded-lg border border-gray-200">
-                    <h5 className="font-medium text-gray-900">{dessert.name}</h5>
-                    <p className="text-sm text-gray-600 mt-1">{dessert.description}</p>
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {dessert.ingredients.map((ingredient, i) => (
-                        <span key={i} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
-                          {ingredient}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex justify-between">
             <button
-              type="button"
-              onClick={() => {
-                setActiveTab('ingredients');
-                setStep(1);
-              }}
-              className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              Revenir aux ingrédients
-            </button>
-            <button
-              type="button"
               onClick={handleSaveMenu}
-              disabled={loading}
-              className={`px-4 py-2 text-white rounded-md shadow-sm ${
-                loading
-                  ? 'bg-indigo-400 cursor-not-allowed'
-                  : 'bg-indigo-600 hover:bg-indigo-700'
-              } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors font-medium"
             >
-              {loading ? 'Enregistrement...' : 'Enregistrer le menu'}
+              Enregistrer le menu
             </button>
           </div>
         </div>
-      ) : (
-        <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <h3 className="mt-2 text-sm font-medium text-gray-900">Aucun menu généré</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            Générez d'abord un menu en sélectionnant vos ingrédients.
-          </p>
-        </div>
-      )}
-    </div>
-  );
 
-  const renderSuccessStep = () => (
-    <div className="mt-6 text-center">
-      <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100">
-        <svg className="h-10 w-10 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-        </svg>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Entrées */}
+          <div>
+            <h3 className="text-xl font-bold text-gray-900 mb-4 pb-2 border-b border-gray-200">Entrées</h3>
+            <div className="space-y-4">
+              {generatedMenu.starters.map((starter, index) => (
+                <div key={index} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <h4 className="font-bold text-gray-900">{starter.name}</h4>
+                  <p className="text-sm text-gray-700 mt-1">{starter.description}</p>
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {starter.ingredients.map((ingredient, i) => (
+                      <span key={i} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                        {ingredient}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Plats */}
+          <div>
+            <h3 className="text-xl font-bold text-gray-900 mb-4 pb-2 border-b border-gray-200">Plats</h3>
+            <div className="space-y-4">
+              {generatedMenu.mains.map((main, index) => (
+                <div key={index} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <h4 className="font-bold text-gray-900">{main.name}</h4>
+                  <p className="text-sm text-gray-700 mt-1">{main.description}</p>
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {main.ingredients.map((ingredient, i) => (
+                      <span key={i} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                        {ingredient}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Desserts */}
+          <div>
+            <h3 className="text-xl font-bold text-gray-900 mb-4 pb-2 border-b border-gray-200">Desserts</h3>
+            <div className="space-y-4">
+              {generatedMenu.desserts.map((dessert, index) => (
+                <div key={index} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <h4 className="font-bold text-gray-900">{dessert.name}</h4>
+                  <p className="text-sm text-gray-700 mt-1">{dessert.description}</p>
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {dessert.ingredients.map((ingredient, i) => (
+                      <span key={i} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                        {ingredient}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
-      <h3 className="mt-3 text-lg font-medium text-gray-900">Menu enregistré avec succès</h3>
-      <p className="mt-2 text-sm text-gray-500">
-        Votre menu du jour a bien été enregistré. Vous pouvez maintenant le publier ou y revenir plus tard.
-      </p>
-      <div className="mt-6 flex justify-center space-x-4">
-        <button
-          type="button"
-          onClick={() => router.push('/dashboard')}
-          className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-        >
-          Retour au tableau de bord
-        </button>
-        <button
-          type="button"
-          onClick={handlePublishMenu}
-          className="px-4 py-2 text-white rounded-md shadow-sm bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-        >
-          Publier le menu
-        </button>
-      </div>
-    </div>
-  );
+    );
+  };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <div className="mb-6">
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-2xl font-bold text-gray-900">Créer un menu du jour</h1>
+    <div className="container mx-auto px-4 py-10 max-w-5xl">
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">Générer un menu du jour</h1>
+        <div className="flex space-x-4">
+          <Link
+            href="/dashboard/daily-menu"
+            className="inline-flex items-center px-5 py-2.5 border border-gray-300 rounded-md shadow-sm text-base font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
+          >
+            <svg className="h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+            </svg>
+            Menus enregistrés
+          </Link>
           <Link
             href="/dashboard"
-            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
+            className="inline-flex items-center px-5 py-2.5 border border-gray-300 rounded-md shadow-sm text-base font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
           >
             <svg className="h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -555,132 +469,142 @@ export default function NewDailyMenuPage() {
             Retour au tableau de bord
           </Link>
         </div>
-        
-        <div className="bg-blue-50 p-4 mb-6 rounded-lg border border-blue-200">
+      </div>
+
+      {error && (
+        <div className="mb-6 bg-red-50 border-l-4 border-red-400 p-4 rounded-md">
           <div className="flex">
             <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
               </svg>
             </div>
             <div className="ml-3">
-              <p className="text-sm text-blue-700">
-                Notre <span className="font-semibold">Ami intelligent</span> génère des suggestions de menus du jour en fonction de vos ingrédients disponibles et des conditions météorologiques. Par temps chaud, il privilégiera des plats frais et légers, tandis que par temps froid, il suggérera des plats plus réconfortants.
-              </p>
+              <p className="text-base text-red-700 font-medium">{error}</p>
             </div>
           </div>
         </div>
-        
-        <div className="relative mb-10">
-          <div className="absolute inset-0 flex items-center" aria-hidden="true">
-            <div className="w-full border-t border-gray-300"></div>
-          </div>
-          <div className="relative flex justify-between">
-            <span className={`px-3 py-1.5 rounded-full text-sm font-medium ${
-              step >= 1 ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500'
-            }`}>
-              1. Sélection des ingrédients
-            </span>
-            <span className={`px-3 py-1.5 rounded-full text-sm font-medium ${
-              step >= 2 ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500'
-            }`}>
-              2. Revue du menu généré
-            </span>
-            <span className={`px-3 py-1.5 rounded-full text-sm font-medium ${
-              step >= 3 ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500'
-            }`}>
-              3. Finalisation
-            </span>
-          </div>
-        </div>
-      </div>
+      )}
 
-      <div className="bg-white shadow overflow-hidden rounded-lg">
-        <div className="px-4 py-5 sm:p-6">
-          {error && (
-            <div className="mb-4 bg-red-50 border-l-4 border-red-400 p-4">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                  </svg>
+      {!showMenu ? (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div className="bg-white p-6 rounded-lg shadow-md">
+              <label className="block text-lg font-bold text-gray-900 mb-3">
+                Restaurant
+              </label>
+              <select
+                value={selectedRestaurant}
+                onChange={(e) => setSelectedRestaurant(e.target.value)}
+                disabled={loading}
+                className="block w-full px-4 py-3 text-base font-medium text-gray-900 border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md shadow-sm"
+              >
+                <option value="">Sélectionnez un restaurant</option>
+                {restaurants.map((restaurant) => (
+                  <option key={restaurant.id} value={restaurant.id} className="text-gray-900 font-medium">
+                    {restaurant.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="bg-white p-6 rounded-lg shadow-md">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                  <label className="block text-lg font-bold text-gray-900 mb-3">
+                    Date du menu
+                  </label>
+                  <input
+                    type="date"
+                    value={menuDate}
+                    onChange={(e) => setMenuDate(e.target.value)}
+                    disabled={loading}
+                    className="block w-full px-4 py-3 text-base font-medium text-gray-900 border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md shadow-sm"
+                  />
                 </div>
-                <div className="ml-3">
-                  <p className="text-sm text-red-700">{error}</p>
+
+                <div>
+                  <label className="block text-lg font-bold text-gray-900 mb-3">
+                    Ville
+                  </label>
+                  <input
+                    type="text"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    disabled={loading}
+                    placeholder="Ex: Paris,fr"
+                    className="block w-full px-4 py-3 text-base font-medium text-gray-900 border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md shadow-sm"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Format: Ville,pays (ex: Lyon,fr ou Rome,it)</p>
                 </div>
+
+                {weather && (
+                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <div className="flex items-center">
+                      <div className="text-4xl mr-4">{weather.icon}</div>
+                      <div>
+                        <div className="text-lg font-bold text-gray-900">{weather.condition}</div>
+                        <div className="text-base font-medium text-gray-800">{weather.temperature}°C</div>
+                        <div className="text-xs text-gray-600 mt-1">
+                          {weather.condition === 'Données simulées' ? (
+                            <span className="text-amber-600">Données simulées</span>
+                          ) : new Date(menuDate).toISOString().split('T')[0] === new Date().toISOString().split('T')[0] ? (
+                            "Météo actuelle"
+                          ) : (
+                            "Prévision météo"
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
-          )}
+          </div>
 
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Restaurant
-            </label>
-            <select
-              value={selectedRestaurant}
-              onChange={(e) => setSelectedRestaurant(e.target.value)}
-              disabled={loading || step > 1}
-              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+          {renderIngredientsList()}
+
+          <div className="mt-8 flex justify-center">
+            <button
+              type="button"
+              onClick={handleGenerateMenu}
+              disabled={generating || !selectedRestaurant}
+              className={`px-8 py-4 text-xl font-medium text-white rounded-md shadow-lg ${
+                generating || !selectedRestaurant
+                  ? 'bg-indigo-400 cursor-not-allowed'
+                  : 'bg-indigo-600 hover:bg-indigo-700'
+              } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all`}
             >
-              <option value="">Sélectionnez un restaurant</option>
-              {restaurants.map((restaurant) => (
-                <option key={restaurant.id} value={restaurant.id}>
-                  {restaurant.name}
-                </option>
-              ))}
-            </select>
+              {generating ? (
+                <>
+                  <span className="inline-block mr-3">
+                    <svg className="animate-spin h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  </span>
+                  Génération en cours...
+                </>
+              ) : (
+                'Générer le menu'
+              )}
+            </button>
           </div>
-
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Date du menu
-            </label>
-            <input
-              type="date"
-              value={menuDate}
-              onChange={(e) => setMenuDate(e.target.value)}
-              disabled={loading || step > 1}
-              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-            />
-          </div>
-
-          {step < 3 && (
-            <div>
-              <div className="border-b border-gray-200">
-                <nav className="flex -mb-px">
-                  <button
-                    onClick={() => setActiveTab('ingredients')}
-                    className={`whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm ${
-                      activeTab === 'ingredients'
-                        ? 'border-indigo-500 text-indigo-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    Ingrédients
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('menu')}
-                    disabled={!generatedMenu}
-                    className={`whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm ${
-                      activeTab === 'menu'
-                        ? 'border-indigo-500 text-indigo-600'
-                        : !generatedMenu
-                          ? 'border-transparent text-gray-300 cursor-not-allowed'
-                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    Menu généré
-                  </button>
-                </nav>
-              </div>
-
-              {activeTab === 'ingredients' ? renderIngredientTab() : renderMenuTab()}
-            </div>
-          )}
-
-          {step === 3 && renderSuccessStep()}
-        </div>
-      </div>
+        </>
+      ) : (
+        <>
+          <button
+            onClick={() => setShowMenu(false)}
+            className="mb-6 inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-base font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
+          >
+            <svg className="h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
+            </svg>
+            Revenir à la configuration
+          </button>
+          {renderGeneratedMenu()}
+        </>
+      )}
     </div>
   );
 } 
