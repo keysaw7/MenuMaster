@@ -37,3 +37,8 @@ next-env.d.ts
 # Ignorer les fichiers volumineux
 /public/images/**/*.jpeg
 /public/images/**/*.png
+
+# environment variables
+.env
+.env.development
+.env.production
