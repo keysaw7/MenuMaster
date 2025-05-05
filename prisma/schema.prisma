@@ -1,0 +1,141 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Restaurant {
+  id          String   @id @default(uuid())
+  name        String
+  description String
+  cuisine     Json
+  address     Json
+  contact     Json
+  hours       Json
+  settings    Json
+  features    Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  menus      Menu[]
+  dailyMenus DailyMenu[]
+  users      UsersOnRestaurants[]
+  ingredients IngredientInventory[]
+}
+
+model Menu {
+  id           String    @id @default(uuid())
+  restaurantId String
+  name         String
+  description  String?
+  type         String
+  isActive     Boolean   @default(true)
+  availability Json
+  categories   Json
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relations
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId])
+}
+
+model DailyMenu {
+  id           String   @id @default(uuid())
+  restaurantId String
+  date         String
+  weather      Json?
+  starters     Json
+  mains        Json
+  desserts     Json
+  price        Float?
+  isPublished  Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId, date])
+}
+
+model Ingredient {
+  id                  String   @id @default(uuid())
+  name                String
+  category            String
+  isAllergen          Boolean  @default(false)
+  allergenType        String?
+  dietaryRestrictions Json
+  season              Json?
+  properties          Json?
+  nutritionalInfo     Json?
+  temperature         String?
+  imageUrl            String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  // Relations
+  inventories         IngredientInventory[]
+}
+
+model IngredientInventory {
+  id            String     @id @default(uuid())
+  restaurantId  String
+  ingredientId  String
+  quantity      Float
+  unit          String
+  stock         Int?
+  isAvailable   Boolean    @default(true)
+  purchasePrice Float?
+  supplier      String?
+  expiryDate    String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  // Relations
+  restaurant    Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  ingredient    Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId])
+  @@index([ingredientId])
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         String
+  preferences  Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  restaurants  UsersOnRestaurants[]
+}
+
+model UsersOnRestaurants {
+  userId       String
+  restaurantId String
+  role         String   // Can be different from the user's global role
+  assignedAt   DateTime @default(now())
+
+  // Relations
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@id([userId, restaurantId])
+  @@index([userId])
+  @@index([restaurantId])
+}

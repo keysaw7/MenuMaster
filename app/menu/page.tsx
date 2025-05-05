@@ -3,12 +3,24 @@
 import { useState, useEffect } from 'react';
 import { Dish } from '../types/dish';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 
 export default function MenuPage() {
+  const router = useRouter();
   const [dishes, setDishes] = useState<Dish[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('tous');
   const [loading, setLoading] = useState(true);
   const [selectedDish, setSelectedDish] = useState<Dish | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeFilters, setActiveFilters] = useState<{
+    vegetarian: boolean;
+    glutenFree: boolean;
+    dairyFree: boolean;
+  }>({
+    vegetarian: false,
+    glutenFree: false,
+    dairyFree: false,
+  });
 
   useEffect(() => {
     const mockDishes: Dish[] = [
@@ -249,137 +261,324 @@ export default function MenuPage() {
     setLoading(false);
   }, []);
 
+  // Fonction pour filtrer les plats selon les critères
+  const filteredDishes = dishes.filter((dish) => {
+    // Filtrer par catégorie
+    if (selectedCategory !== 'tous' && dish.category !== selectedCategory) {
+      return false;
+    }
+    
+    // Filtrer par recherche
+    if (
+      searchQuery && 
+      !dish.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
+      !dish.description.toLowerCase().includes(searchQuery.toLowerCase())
+    ) {
+      return false;
+    }
+    
+    // Filtrer par restrictions alimentaires
+    if (activeFilters.vegetarian && !dish.dietaryRestrictions.includes('végétarien')) {
+      return false;
+    }
+    
+    if (activeFilters.glutenFree && dish.allergens.includes('gluten')) {
+      return false;
+    }
+    
+    if (activeFilters.dairyFree && dish.allergens.includes('lait')) {
+      return false;
+    }
+    
+    return true;
+  });
+
+  const categories = [
+    { id: 'tous', name: 'Tous les plats' },
+    { id: 'entrée', name: 'Entrées' },
+    { id: 'plat', name: 'Plats' },
+    { id: 'dessert', name: 'Desserts' },
+  ];
+
   const handleMoreInfo = (dish: Dish) => {
     setSelectedDish(dish);
+    // Remonter en haut pour les mobiles
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const categories = ['tous', 'entrée', 'plat', 'dessert', 'boisson'];
+  const handleCloseDetails = () => {
+    setSelectedDish(null);
+  };
 
-  const filteredDishes = selectedCategory === 'tous' 
-    ? dishes 
-    : dishes.filter(dish => dish.category === selectedCategory);
+  const toggleFilter = (filter: 'vegetarian' | 'glutenFree' | 'dairyFree') => {
+    setActiveFilters(prev => ({
+      ...prev,
+      [filter]: !prev[filter]
+    }));
+  };
 
-  return (
-    <div className="min-h-screen bg-white">
-      {/* En-tête décoratif */}
-      <div className="relative h-[300px] bg-[#2F4F4F] overflow-hidden">
-        {/* Contenu de l'en-tête */}
-        <div className="container mx-auto px-4 h-full flex flex-col justify-center relative">
-          <h1 className="text-6xl font-playfair text-center mb-6 text-white drop-shadow-lg italic">
-            Notre Carte
-          </h1>
-          <p className="text-center text-gray-100 text-xl max-w-3xl mx-auto leading-relaxed drop-shadow-lg">
-            Découvrez notre sélection de plats traditionnels corses revisités,
-            inspirés par la richesse gastronomique de l&apos;île de beauté
-          </p>
+  // Affichage des détails d'un plat
+  const renderDishDetails = () => {
+    if (!selectedDish) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
+        <div className="relative bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-auto">
+          <button 
+            onClick={handleCloseDetails}
+            className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 focus:outline-none"
+          >
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          
+          <div className="flex flex-col md:flex-row">
+            <div className="md:w-1/2 relative h-64 md:h-auto">
+              {selectedDish.imageUrl ? (
+                <Image
+                  src={selectedDish.imageUrl}
+                  alt={selectedDish.name}
+                  fill
+                  className="object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                  <span className="text-gray-400">Image non disponible</span>
+                </div>
+              )}
+            </div>
+            
+            <div className="p-6 md:w-1/2">
+              <h2 className="text-2xl font-bold text-gray-900">{selectedDish.name}</h2>
+              <p className="mt-2 text-gray-600">{selectedDish.description}</p>
+              
+              <div className="mt-4">
+                <span className="font-semibold text-xl text-indigo-600">{selectedDish.price} €</span>
+              </div>
+              
+              {selectedDish.ingredients.length > 0 && (
+                <div className="mt-4">
+                  <h3 className="font-medium text-gray-900">Ingrédients</h3>
+                  <ul className="mt-2 text-gray-600">
+                    {selectedDish.ingredients.map((ingredient, index) => (
+                      <li key={index} className="inline-block mr-2 mb-2 bg-gray-100 px-2 py-1 rounded-full text-sm">
+                        {ingredient}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              
+              {selectedDish.allergens && selectedDish.allergens.length > 0 && (
+                <div className="mt-4">
+                  <h3 className="font-medium text-gray-900">Allergènes</h3>
+                  <ul className="mt-2">
+                    {selectedDish.allergens.map((allergen, index) => (
+                      <li key={index} className="inline-block mr-2 mb-2 bg-red-100 px-2 py-1 rounded-full text-sm text-red-800">
+                        {allergen}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              
+              {selectedDish.dietaryRestrictions && selectedDish.dietaryRestrictions.length > 0 && (
+                <div className="mt-4">
+                  <h3 className="font-medium text-gray-900">Régimes alimentaires</h3>
+                  <ul className="mt-2">
+                    {selectedDish.dietaryRestrictions.map((restriction, index) => (
+                      <li key={index} className="inline-block mr-2 mb-2 bg-green-100 px-2 py-1 rounded-full text-sm text-green-800">
+                        {restriction}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              
+              {selectedDish.recommendedPairings && selectedDish.recommendedPairings.length > 0 && (
+                <div className="mt-4">
+                  <h3 className="font-medium text-gray-900">Accords suggérés</h3>
+                  <ul className="mt-2 text-gray-600">
+                    {selectedDish.recommendedPairings.map((pairing, index) => (
+                      <li key={index} className="inline-block mr-2 mb-2 bg-purple-100 px-2 py-1 rounded-full text-sm text-purple-800">
+                        {pairing}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
+    );
+  };
 
-      {/* Section des catégories avec image de fond fixe */}
-      <div className="relative">
-        <div 
-          className="fixed inset-0 z-0"
-          style={{ 
-            backgroundImage: "url('/images/bonifacio-day.jpeg')",
-            backgroundAttachment: "fixed",
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            opacity: 0.15
-          }}
-        ></div>
-
-        <div className="container mx-auto px-4 py-12 relative z-10">
-          {/* Navigation des catégories */}
-          <div className="flex justify-center gap-4 mb-12">
-            {categories.map(category => (
+  return (
+    <>      
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        <h1 className="text-3xl md:text-4xl font-bold text-center mb-8">Notre Carte</h1>
+        
+        {/* Barre de recherche et filtres */}
+        <div className="mb-8">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="relative w-full md:w-96">
+              <input
+                type="text"
+                placeholder="Rechercher un plat..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full py-2 pl-10 pr-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+                </svg>
+              </div>
+            </div>
+            
+            <div className="flex flex-wrap gap-2">
               <button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
-                className={`px-6 py-2.5 rounded-full transition-all duration-300 font-medium text-sm tracking-wide
-                  ${selectedCategory === category
-                    ? 'bg-[#2F4F4F] text-white shadow-lg transform scale-105'
-                    : 'bg-white text-[#2F4F4F] border border-[#2F4F4F] hover:bg-gray-50 hover:shadow'
-                  }`}
+                onClick={() => toggleFilter('vegetarian')}
+                className={`px-3 py-1.5 text-sm font-medium rounded-md ${
+                  activeFilters.vegetarian
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
               >
-                {category.charAt(0).toUpperCase() + category.slice(1)}
+                Végétarien
+              </button>
+              
+              <button
+                onClick={() => toggleFilter('glutenFree')}
+                className={`px-3 py-1.5 text-sm font-medium rounded-md ${
+                  activeFilters.glutenFree
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Sans gluten
+              </button>
+              
+              <button
+                onClick={() => toggleFilter('dairyFree')}
+                className={`px-3 py-1.5 text-sm font-medium rounded-md ${
+                  activeFilters.dairyFree
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Sans lactose
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        {/* Navigation par catégories */}
+        <div className="mb-8 overflow-x-auto">
+          <div className="flex space-x-2 md:justify-center">
+            {categories.map((category) => (
+              <button
+                key={category.id}
+                onClick={() => setSelectedCategory(category.id)}
+                className={`px-4 py-2 text-sm md:text-base font-medium rounded-md whitespace-nowrap ${
+                  selectedCategory === category.id
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-white text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                {category.name}
               </button>
             ))}
           </div>
-
-          {loading ? (
-            <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2F4F4F]"></div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-4">
-              {filteredDishes.map((dish) => (
-                <div
-                  key={dish.id}
-                  className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 cursor-pointer"
-                  onClick={() => handleMoreInfo(dish)}
-                >
-                  <div className="relative h-48 w-full">
+        </div>
+        
+        {/* Liste des plats */}
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+          </div>
+        ) : filteredDishes.length === 0 ? (
+          <div className="text-center py-10">
+            <h3 className="text-lg font-medium text-gray-900">Aucun plat ne correspond à vos critères</h3>
+            <p className="mt-2 text-sm text-gray-500">Essayez de modifier vos filtres ou votre recherche.</p>
+            <button
+              onClick={() => {
+                setSelectedCategory('tous');
+                setSearchQuery('');
+                setActiveFilters({ vegetarian: false, glutenFree: false, dairyFree: false });
+              }}
+              className="mt-4 px-4 py-2 text-sm font-medium text-indigo-600 bg-white rounded-md hover:bg-indigo-50"
+            >
+              Réinitialiser les filtres
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredDishes.map((dish) => (
+              <div
+                key={dish.id}
+                className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300"
+              >
+                <div className="relative h-48">
+                  {dish.imageUrl ? (
                     <Image
-                      src={dish.imageUrl || '/images/placeholder-dish.jpg'}
+                      src={dish.imageUrl}
                       alt={dish.name}
                       fill
                       className="object-cover"
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     />
-                  </div>
-                  <div className="p-4">
-                    <h3 className="text-xl font-playfair text-[#2F4F4F] mb-2">{dish.name}</h3>
-                    <p className="text-gray-600 mb-2 line-clamp-2">{dish.description}</p>
-                    <p className="text-[#2F4F4F] font-semibold">{dish.price}€</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Modal avec plus d'informations */}
-          {selectedDish && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-              <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                <div className="relative h-64 w-full">
-                  <Image
-                    src={selectedDish.imageUrl || '/images/placeholder-dish.jpg'}
-                    alt={selectedDish.name}
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                  />
-                </div>
-                <div className="p-6">
-                  <h2 className="text-2xl font-playfair text-[#2F4F4F] mb-4">{selectedDish.name}</h2>
-                  <p className="text-gray-700 mb-4">{selectedDish.description}</p>
-                  <div className="mb-4">
-                    <h3 className="font-playfair text-[#2F4F4F] mb-2">Ingrédients :</h3>
-                    <p className="text-gray-600">{selectedDish.ingredients.join(', ')}</p>
-                  </div>
-                  {selectedDish.allergens.length > 0 && (
-                    <div className="mb-4">
-                      <h3 className="font-playfair text-[#2F4F4F] mb-2">Allergènes :</h3>
-                      <p className="text-gray-600">{selectedDish.allergens.join(', ')}</p>
+                  ) : (
+                    <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                      <span className="text-gray-400">Image non disponible</span>
                     </div>
                   )}
-                  <div className="mb-4">
-                    <h3 className="font-playfair text-[#2F4F4F] mb-2">Accords mets et vins :</h3>
-                    <p className="text-gray-600">{(selectedDish.recommendedPairings || []).join(', ')}</p>
+                </div>
+                
+                <div className="p-4">
+                  <div className="flex justify-between items-start">
+                    <h3 className="text-lg font-semibold text-gray-900">{dish.name}</h3>
+                    <span className="font-medium text-indigo-600">{dish.price} €</span>
                   </div>
-                  <p className="text-xl font-semibold text-[#2F4F4F]">{selectedDish.price}€</p>
+                  
+                  <p className="mt-2 text-gray-600 line-clamp-3">{dish.description}</p>
+                  
+                  <div className="mt-3 flex flex-wrap gap-1">
+                    {dish.allergens.map((allergen, index) => (
+                      <span
+                        key={index}
+                        className="px-1.5 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-800"
+                      >
+                        {allergen}
+                      </span>
+                    ))}
+                    
+                    {dish.dietaryRestrictions.map((restriction, index) => (
+                      <span
+                        key={index}
+                        className="px-1.5 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800"
+                      >
+                        {restriction}
+                      </span>
+                    ))}
+                  </div>
+                  
                   <button
-                    onClick={() => setSelectedDish(null)}
-                    className="mt-4 bg-[#2F4F4F] text-white px-6 py-2 rounded hover:bg-opacity-90 transition-colors"
+                    onClick={() => handleMoreInfo(dish)}
+                    className="mt-4 w-full px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-md hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
-                    Fermer
+                    Voir les détails
                   </button>
                 </div>
               </div>
-            </div>
-          )}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
-    </div>
+      
+      {/* Modal de détails du plat */}
+      {selectedDish && renderDishDetails()}
+    </>
   );
 } 

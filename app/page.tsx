@@ -1,293 +1,172 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Dish } from './types/dish';
+import ResponsiveNavigation from './components/ResponsiveNavigation';
 
 export default function HomePage() {
-  const [showModal, setShowModal] = useState(false);
-  const [userPreferences, setUserPreferences] = useState('');
-  const [recommendation, setRecommendation] = useState<string>('');
-  const [recommendedDishes, setRecommendedDishes] = useState<Dish[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [selectedAllergens, setSelectedAllergens] = useState<string[]>([]);
-  const [selectedRestrictions, setSelectedRestrictions] = useState<string[]>([]);
-
-  const handleGetRecommendation = async () => {
-    if (!userPreferences) return;
-    
-    setIsLoading(true);
-    
-    try {
-      const response = await fetch('/api/recommendation', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          preferences: userPreferences,
-          allergens: selectedAllergens,
-          restrictions: selectedRestrictions
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Erreur lors de la récupération des recommandations');
-      }
-
-      const data = await response.json();
-      setRecommendation(data.recommendation);
-      setRecommendedDishes(data.dishes);
-    } catch {
-      setRecommendedDishes([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleAllergenChange = (allergen: string, checked: boolean) => {
-    if (checked) {
-      setSelectedAllergens(prev => [...prev, allergen]);
-      setUserPreferences(prev => prev + ` allergique au ${allergen}`);
-    } else {
-      setSelectedAllergens(prev => prev.filter(a => a !== allergen));
-      setUserPreferences(prev => prev.replace(` allergique au ${allergen}`, ''));
-    }
-  };
-
-  const handleRestrictionChange = (restriction: string, checked: boolean) => {
-    if (checked) {
-      setSelectedRestrictions(prev => [...prev, restriction]);
-      setUserPreferences(prev => prev + ` ${restriction}`);
-    } else {
-      setSelectedRestrictions(prev => prev.filter(r => r !== restriction));
-      setUserPreferences(prev => prev.replace(` ${restriction}`, ''));
-    }
-  };
-
   return (
-    <div className="min-h-screen relative">
-      {/* Image de fond avec overlay */}
-      <div 
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{ 
-          backgroundImage: "url('/images/bonifacio-sunset.webp')",
-          backgroundPosition: "center 40%"
-        }}
-      >
-        <div className="absolute inset-0 bg-gradient-to-b from-[#2F4F4F]/30 to-[#2F4F4F]/80"></div>
-      </div>
-
-      {/* Contenu */}
-      <div className="relative h-screen flex flex-col justify-center items-center px-4">
-        <h1 className="text-7xl font-playfair text-white mb-8 text-center drop-shadow-lg italic">
-          Chez Minnà
-        </h1>
-        <p className="text-2xl text-gray-100 max-w-2xl text-center mb-12 leading-relaxed drop-shadow">
-          Une cuisine corse authentique et raffinée,
-          <br />entre tradition et modernité
-        </p>
-        <Link 
-          href="/menu" 
-          className="bg-[#2F4F4F] text-white px-8 py-4 rounded-lg text-xl font-medium 
-            hover:bg-[#1a2f2f] transition-colors duration-300 shadow-lg hover:shadow-xl"
-        >
-          Découvrir notre carte
-        </Link>
-      </div>
-
-      {/* Bouton d'aide IA */}
-      <div className="fixed bottom-4 right-4">
-        <button
-          onClick={() => setShowModal(true)}
-          className="bg-[#2F4F4F] text-white px-6 py-3 rounded-lg shadow-lg hover:bg-opacity-90 transition-all duration-300 flex items-center gap-2"
-        >
-          <span className="flex items-center">
-            <svg className="w-5 h-5 mr-1" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-            </svg>
-            Aide pour mes choix de plats
-          </span>
-        </button>
-      </div>
-
-      {/* Modal d'aide IA */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg w-[90vw] max-w-6xl p-6">
-            <div className="flex justify-between items-start mb-4">
-              <h2 className="text-2xl font-playfair text-[#2F4F4F]">Assistant de choix de plats</h2>
-              {recommendation && (
-                <button
-                  onClick={() => {
-                    setUserPreferences('');
-                    setRecommendation('');
-                    setRecommendedDishes([]);
-                  }}
-                  className="text-yellow-500 hover:text-yellow-600 transition-colors"
+    <>
+      <ResponsiveNavigation />
+      
+      {/* Hero Section */}
+      <section className="bg-gradient-to-b from-indigo-50 to-white py-12 md:py-20">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-16">
+            <div className="lg:w-1/2 text-center lg:text-left">
+              <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 leading-tight">
+                La plateforme ultime pour gérer votre<br className="hidden md:block" />
+                <span className="text-indigo-600">carte de restaurant</span>
+              </h1>
+              <p className="mt-6 text-lg md:text-xl text-gray-600 max-w-2xl mx-auto lg:mx-0">
+                Créez, personnalisez et gérez votre menu avec notre solution tout-en-un, 
+                enrichie par notre <span className="font-semibold">Ami</span> intelligent pour des suggestions contextuelles.
+              </p>
+              <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+                <Link
+                  href="/register"
+                  className="px-8 py-3.5 bg-indigo-600 text-white rounded-lg shadow-lg hover:bg-indigo-700 transition duration-300 text-base md:text-lg font-medium"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                  </svg>
-                </button>
-              )}
-            </div>
-
-            {!recommendation ? (
-              <>
-                <p className="text-gray-600 mb-4">
-                  Sélectionnez vos restrictions et décrivez vos préférences pour obtenir des recommandations personnalisées.
-                </p>
-                <div className="flex gap-6">
-                  <div className="flex-1">
-                    <div className="mb-4 p-3 bg-white rounded-lg border border-gray-200">
-                      <h3 className="text-sm font-semibold text-[#2F4F4F] mb-3">Allergènes et restrictions</h3>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-2">
-                          <label className="flex items-center space-x-2">
-                            <input
-                              type="checkbox"
-                              checked={selectedAllergens.includes('lait')}
-                              onChange={(e) => handleAllergenChange('lait', e.target.checked)}
-                              className="rounded border-gray-300 text-[#2F4F4F] focus:ring-[#2F4F4F]"
-                            />
-                            <span className="text-sm text-gray-800">Lait <span className="text-gray-600">(présent dans les fromages, crèmes, beurre)</span></span>
-                          </label>
-                          <label className="flex items-center space-x-2">
-                            <input
-                              type="checkbox"
-                              checked={selectedAllergens.includes('gluten')}
-                              onChange={(e) => handleAllergenChange('gluten', e.target.checked)}
-                              className="rounded border-gray-300 text-[#2F4F4F] focus:ring-[#2F4F4F]"
-                            />
-                            <span className="text-sm text-gray-800">Gluten <span className="text-gray-600">(présent dans le pain, pâtes, farine)</span></span>
-                          </label>
-                          <label className="flex items-center space-x-2">
-                            <input
-                              type="checkbox"
-                              checked={selectedAllergens.includes('œuf')}
-                              onChange={(e) => handleAllergenChange('œuf', e.target.checked)}
-                              className="rounded border-gray-300 text-[#2F4F4F] focus:ring-[#2F4F4F]"
-                            />
-                            <span className="text-sm text-gray-800">Œufs <span className="text-gray-600">(présents dans les pâtisseries, sauces)</span></span>
-                          </label>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="flex items-center space-x-2">
-                            <input
-                              type="checkbox"
-                              checked={selectedRestrictions.includes('végétarien')}
-                              onChange={(e) => handleRestrictionChange('végétarien', e.target.checked)}
-                              className="rounded border-gray-300 text-[#2F4F4F] focus:ring-[#2F4F4F]"
-                            />
-                            <span className="text-sm text-gray-800">Végétarien <span className="text-gray-600">(pas de viande ni de poisson)</span></span>
-                          </label>
-                          <label className="flex items-center space-x-2">
-                            <input
-                              type="checkbox"
-                              checked={selectedRestrictions.includes('sans alcool')}
-                              onChange={(e) => handleRestrictionChange('sans alcool', e.target.checked)}
-                              className="rounded border-gray-300 text-[#2F4F4F] focus:ring-[#2F4F4F]"
-                            />
-                            <span className="text-sm text-gray-800">Sans alcool <span className="text-gray-600">(pas de vin, bière, spiritueux)</span></span>
-                          </label>
-                          <label className="flex items-center space-x-2">
-                            <input
-                              type="checkbox"
-                              checked={selectedRestrictions.includes('sans porc')}
-                              onChange={(e) => handleRestrictionChange('sans porc', e.target.checked)}
-                              className="rounded border-gray-300 text-[#2F4F4F] focus:ring-[#2F4F4F]"
-                            />
-                            <span className="text-sm text-gray-800">Sans porc <span className="text-gray-600">(pas de charcuterie, jambon, saucisson)</span></span>
-                          </label>
-                        </div>
-                      </div>
-                    </div>
-                    <textarea
-                      value={userPreferences}
-                      onChange={(e) => setUserPreferences(e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-[#2F4F4F] text-gray-800"
-                      rows={3}
-                      placeholder="Décrivez vos préférences (ex: j'aime les plats épicés, je préfère les entrées légères...)"
-                    />
-                    <button
-                      onClick={handleGetRecommendation}
-                      disabled={isLoading || !userPreferences.trim()}
-                      className="bg-[#2F4F4F] text-white px-6 py-2 rounded hover:bg-opacity-90 transition-colors disabled:opacity-50"
-                    >
-                      {isLoading ? 'Génération en cours...' : 'Obtenir des recommandations'}
-                    </button>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="bg-white rounded-lg shadow-lg max-h-[70vh] overflow-y-auto">
-                <h3 className="text-lg font-semibold text-[#2F4F4F] mb-3">Nos recommandations</h3>
-                <p className="text-sm text-gray-700 mb-4">{recommendation}</p>
-                
-                {recommendedDishes.length > 0 && (
-                  <div className="space-y-4">
-                    {recommendedDishes.map((dish) => (
-                      <div key={dish.id} className="bg-white rounded-lg shadow-md overflow-hidden flex">
-                        <div className="relative w-32 flex-shrink-0">
-                          <Image
-                            src={dish.imageUrl || '/images/placeholder-dish.jpg'}
-                            alt={dish.name}
-                            fill
-                            className="object-cover"
-                          />
-                        </div>
-                        <div className="p-3 flex-grow">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <h4 className="text-base font-semibold text-[#2F4F4F]">{dish.name}</h4>
-                              <p className="text-xs text-gray-600">{dish.category}</p>
-                            </div>
-                            <p className="text-sm text-[#2F4F4F] font-semibold">{dish.price}€</p>
-                          </div>
-                          <p className="text-sm text-gray-700 my-2 line-clamp-2">{dish.description}</p>
-                          <div className="flex flex-wrap gap-1 mb-1">
-                            {dish.ingredients.map((ingredient: string) => (
-                              <span key={ingredient} className="px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded-full text-xs">
-                                {ingredient}
-                              </span>
-                            ))}
-                          </div>
-                          <div className="flex gap-2 text-xs">
-                            {dish.allergens.length > 0 && (
-                              <p className="text-red-600">
-                                Allergènes : {dish.allergens.join(', ')}
-                              </p>
-                            )}
-                            {dish.dietaryRestrictions.length > 0 && (
-                              <p className="text-green-600">
-                                Restrictions : {dish.dietaryRestrictions.join(', ')}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                  Commencer gratuitement
+                </Link>
+                <Link
+                  href="/login"
+                  className="px-8 py-3.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition duration-300 text-base md:text-lg font-medium"
+                >
+                  Se connecter
+                </Link>
               </div>
-            )}
-
-            <button
-              onClick={() => {
-                setShowModal(false);
-                setUserPreferences('');
-                setRecommendation('');
-                setRecommendedDishes([]);
-              }}
-              className="mt-4 text-gray-600 hover:text-gray-800"
-            >
-              Fermer
-            </button>
+            </div>
+            
+            <div className="lg:w-1/2 relative">
+              <div className="relative rounded-2xl overflow-hidden shadow-2xl">
+                <Image
+                  src="/images/dashboard-preview.jpg"
+                  alt="Aperçu du dashboard"
+                  width={720}
+                  height={480}
+                  className="w-full h-auto"
+                />
+                <div className="absolute inset-0 bg-gradient-to-tr from-indigo-900/30 to-transparent"></div>
+              </div>
+            </div>
           </div>
         </div>
-      )}
-    </div>
+      </section>
+
+      {/* Features Section */}
+      <section className="py-16 bg-white">
+        <div className="container mx-auto px-4">
+          <div className="text-center max-w-3xl mx-auto mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900">
+              Fonctionnalités principales
+            </h2>
+            <p className="mt-4 text-lg text-gray-600">
+              Notre plateforme offre tout ce dont vous avez besoin pour créer, gérer et optimiser votre carte de restaurant
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
+              <div className="w-14 h-14 bg-indigo-100 rounded-lg flex items-center justify-center mb-5">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Menu personnalisable</h3>
+              <p className="text-gray-600">
+                Créez votre carte avec des catégories personnalisées, des images attrayantes et des descriptions alléchantes.
+              </p>
+            </div>
+
+            <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
+              <div className="w-14 h-14 bg-indigo-100 rounded-lg flex items-center justify-center mb-5">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Recommandations intelligentes</h3>
+              <p className="text-gray-600">
+                Générez des menus du jour basés sur la météo et vos ingrédients disponibles grâce à notre Ami intelligent.
+              </p>
+            </div>
+
+            <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
+              <div className="w-14 h-14 bg-indigo-100 rounded-lg flex items-center justify-center mb-5">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Responsive & QR Code</h3>
+              <p className="text-gray-600">
+                Votre menu s'adapte à tous les appareils et peut être consulté via un QR code placé sur vos tables.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="py-16 bg-indigo-600 text-white">
+        <div className="container mx-auto px-4 text-center">
+          <div className="max-w-3xl mx-auto">
+            <h2 className="text-3xl md:text-4xl font-bold mb-6">
+              Prêt à transformer votre expérience client ?
+            </h2>
+            <p className="text-xl text-indigo-100 mb-8">
+              Rejoignez des centaines de restaurants qui utilisent déjà MenuMaster pour moderniser leur carte
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link
+                href="/register"
+                className="px-8 py-3.5 bg-white text-indigo-600 rounded-lg shadow-lg hover:bg-indigo-50 transition duration-300 text-lg font-medium"
+              >
+                Commencer gratuitement
+              </Link>
+              <Link
+                href="/contact"
+                className="px-8 py-3.5 bg-transparent border border-white text-white rounded-lg hover:bg-indigo-700 transition duration-300 text-lg font-medium"
+              >
+                Nous contacter
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-gray-900 text-white py-12">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div className="col-span-1 md:col-span-2">
+              <h3 className="text-xl font-bold mb-4">MenuMaster</h3>
+              <p className="text-gray-300 mb-4 max-w-md">
+                La solution complète pour la gestion de vos menus. Simplifiez votre processus de création et offrez une expérience moderne à vos clients.
+              </p>
+            </div>
+            <div>
+              <h4 className="text-lg font-medium mb-4">Liens rapides</h4>
+              <ul className="space-y-2">
+                <li><Link href="/features" className="text-gray-300 hover:text-white transition duration-300">Fonctionnalités</Link></li>
+                <li><Link href="/pricing" className="text-gray-300 hover:text-white transition duration-300">Tarifs</Link></li>
+                <li><Link href="/contact" className="text-gray-300 hover:text-white transition duration-300">Contact</Link></li>
+                <li><Link href="/register" className="text-gray-300 hover:text-white transition duration-300">Inscription</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-lg font-medium mb-4">Légal</h4>
+              <ul className="space-y-2">
+                <li><Link href="/privacy" className="text-gray-300 hover:text-white transition duration-300">Confidentialité</Link></li>
+                <li><Link href="/terms" className="text-gray-300 hover:text-white transition duration-300">Conditions d'utilisation</Link></li>
+                <li><Link href="/accessibility" className="text-gray-300 hover:text-white transition duration-300">Accessibilité</Link></li>
+              </ul>
+            </div>
+          </div>
+          <div className="pt-8 mt-8 border-t border-gray-800 text-center text-gray-400 text-sm">
+            <p>© {new Date().getFullYear()} MenuMaster. Tous droits réservés.</p>
+          </div>
+        </div>
+      </footer>
+    </>
   );
 }
