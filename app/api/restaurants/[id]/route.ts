@@ -10,7 +10,7 @@ interface RouteParams {
 // GET /api/restaurants/[id] - Récupérer un restaurant par son ID
 export async function GET(request: Request, { params }: RouteParams) {
   try {
-    const id = params.id;
+    const id = await params.id;
 
     const restaurant = await prisma.restaurant.findUnique({
       where: { id },

@@ -14,6 +14,17 @@ export type MenuGenerationOptions = {
   cuisine?: string[];
   dietaryRestrictions?: string[];
   city?: string;
+  restaurantName?: string;
+  restaurantMenu?: {
+    categories: {
+      name: string;
+      items: {
+        name: string;
+        description: string;
+        ingredients: string[];
+      }[];
+    }[];
+  };
 };
 
 /**
@@ -27,7 +38,9 @@ export async function generateDailyMenu(options: MenuGenerationOptions) {
     availableIngredients = [], 
     cuisine = [], 
     dietaryRestrictions = [],
-    city = 'Paris'
+    city = 'Paris',
+    restaurantName,
+    restaurantMenu
   } = options;
   
   try {
@@ -42,16 +55,18 @@ export async function generateDailyMenu(options: MenuGenerationOptions) {
       availableIngredients: ingredientNames,
       cuisine,
       dietaryRestrictions,
-      city
+      city,
+      restaurantName,
+      restaurantMenu
     });
 
     // Appeler l'API OpenAI
     const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model: "gpt-4.1-nano",
       messages: [
         {
           role: "system",
-          content: "Tu es un chef cuisinier expert qui crée des menus du jour adaptés aux conditions météo, ingrédients disponibles et préférences culinaires. Tu réponds toujours en JSON valide sans aucun texte supplémentaire."
+          content: "Tu es un chef cuisinier expert spécialisé dans l'adaptation des menus aux cultures culinaires spécifiques. Ta mission principale est de créer des menus authentiques et respectueux des traditions culinaires du restaurant client. Analyse d'abord le style culinaire spécifié ou déduis-le du menu fixe existant, puis crée un menu du jour qui respecte scrupuleusement cette identité culinaire, tout en s'adaptant aux conditions météo et aux ingrédients disponibles. Tu dois maintenir l'authenticité culturelle dans chaque plat proposé. Tu réponds toujours en JSON valide sans aucun texte supplémentaire."
         },
         {
           role: "user",
@@ -90,32 +105,32 @@ export async function generateDailyMenu(options: MenuGenerationOptions) {
     
     // En cas d'erreur, utiliser le fallback avec les suggestions prédéfinies
     console.log("Utilisation du système de fallback pour la génération du menu");
-    
-    // Récupérer les suggestions pour les conditions météo
-    const suggestions = weatherFoodSuggestions[weatherCondition];
-    
-    if (!suggestions) {
-      throw new Error(`Pas de suggestions disponibles pour la condition météo: ${weatherCondition}`);
-    }
-    
+  
+  // Récupérer les suggestions pour les conditions météo
+  const suggestions = weatherFoodSuggestions[weatherCondition];
+  
+  if (!suggestions) {
+    throw new Error(`Pas de suggestions disponibles pour la condition météo: ${weatherCondition}`);
+  }
+  
     // Générer les plats du menu avec l'ancienne méthode
-    const starters = generateDishes('starter', 2, suggestions, cuisine, availableIngredients, dietaryRestrictions);
-    const mains = generateDishes('main', 2, suggestions, cuisine, availableIngredients, dietaryRestrictions);
-    const desserts = generateDishes('dessert', 1, suggestions, cuisine, availableIngredients, dietaryRestrictions);
-    
-    // Calculer un prix total pour le menu
-    const basePrice = 28; // Prix de base
-    
-    // Prix réel entre 26 et 34 selon la complexité des plats
-    const totalPrice = Math.round(basePrice + (Math.random() * 8 - 4));
-    
-    return {
-      starters,
-      mains,
-      desserts,
-      price: totalPrice,
-      weatherCondition,
-    };
+  const starters = generateDishes('starter', 2, suggestions, cuisine, availableIngredients, dietaryRestrictions);
+  const mains = generateDishes('main', 2, suggestions, cuisine, availableIngredients, dietaryRestrictions);
+  const desserts = generateDishes('dessert', 1, suggestions, cuisine, availableIngredients, dietaryRestrictions);
+  
+  // Calculer un prix total pour le menu
+  const basePrice = 28; // Prix de base
+  
+  // Prix réel entre 26 et 34 selon la complexité des plats
+  const totalPrice = Math.round(basePrice + (Math.random() * 8 - 4));
+  
+  return {
+    starters,
+    mains,
+    desserts,
+    price: totalPrice,
+    weatherCondition,
+  };
   }
 }
 
@@ -130,6 +145,17 @@ function buildAIPrompt(options: {
   cuisine?: string[];
   dietaryRestrictions?: string[];
   city?: string;
+  restaurantName?: string;
+  restaurantMenu?: {
+    categories: {
+      name: string;
+      items: {
+        name: string;
+        description: string;
+        ingredients: string[];
+      }[];
+    }[];
+  };
 }) {
   const {
     weatherCondition,
@@ -138,7 +164,9 @@ function buildAIPrompt(options: {
     availableIngredients,
     cuisine,
     dietaryRestrictions,
-    city
+    city,
+    restaurantName,
+    restaurantMenu
   } = options;
 
   // Construire une description lisible de la météo
@@ -149,8 +177,8 @@ function buildAIPrompt(options: {
   
   // Formater les informations sur les cuisines préférées
   const cuisineInfo = cuisine && cuisine.length > 0 
-    ? `Le restaurant se spécialise dans la cuisine ${cuisine.join(', ')}.` 
-    : `Le restaurant propose une cuisine française traditionnelle.`;
+    ? `Le restaurant se spécialise dans la cuisine ${cuisine.join(', ')}. Il est ESSENTIEL que tous les plats proposés respectent AUTHENTIQUEMENT cette tradition culinaire spécifique dans les ingrédients, techniques et saveurs.` 
+    : ``;
   
   // Formater les restrictions alimentaires
   const restrictionsInfo = dietaryRestrictions && dietaryRestrictions.length > 0
@@ -162,13 +190,50 @@ function buildAIPrompt(options: {
     ? `Les ingrédients disponibles sont : ${availableIngredients.join(', ')}.`
     : "Tous les ingrédients de saison sont disponibles.";
   
+  // Formater les informations du restaurant
+  let restaurantInfo = "";
+  if (restaurantName) {
+    restaurantInfo = `Le menu est pour le restaurant "${restaurantName}". `;
+  }
+  
+  // Ajouter les informations du menu fixe du restaurant s'il existe
+  let menuFixeInfo = "";
+  let menuAnalysisInstruction = "";
+  
+  if (restaurantMenu && restaurantMenu.categories && restaurantMenu.categories.length > 0) {
+    menuFixeInfo = "Le restaurant dispose d'un menu fixe avec les plats suivants :\n";
+    
+    restaurantMenu.categories.forEach(category => {
+      menuFixeInfo += `\n- ${category.name}:\n`;
+      
+      category.items.forEach(item => {
+        menuFixeInfo += `  * ${item.name}: ${item.description} (ingrédients: ${item.ingredients.join(', ')})\n`;
+      });
+    });
+    
+    menuAnalysisInstruction = `
+Avant de générer le menu du jour, analyse attentivement le menu fixe du restaurant pour:
+1. Identifier le style culinaire dominant (méditerranéen, corse, italien, français, etc.)
+2. Repérer les ingrédients caractéristiques et récurrents
+3. Comprendre les techniques culinaires privilégiées
+4. Noter les spécialités régionales éventuelles
+
+Le menu du jour que tu proposeras doit absolument:
+- Respecter le même style culinaire que le menu fixe
+- Utiliser des ingrédients cohérents avec ceux du menu fixe
+- S'inspirer des plats existants tout en proposant des variations originales
+- Être adapté à la météo du jour`;
+  }
+  
   // Construire le prompt complet
   return `
 Génère un menu du jour pour un restaurant à ${city}${date ? ` le ${date}` : ' aujourd\'hui'}.
 ${weatherDescription}.
-${cuisineInfo}
+${restaurantInfo}${cuisineInfo}
 ${restrictionsInfo}
 ${ingredientsInfo}
+${menuFixeInfo}
+${menuAnalysisInstruction}
 
 Le menu doit être composé de:
 - 2 entrées (starters)
@@ -176,7 +241,7 @@ Le menu doit être composé de:
 - 1 dessert (desserts)
 
 Chaque plat doit avoir:
-- Un nom (name)
+- Un nom (name) authentique et cohérent avec le style culinaire identifié
 - Une description détaillée et appétissante (description)
 - Une liste d'ingrédients principaux (ingredients)
 

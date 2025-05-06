@@ -100,13 +100,13 @@ const fetchDailyMenus = async (): Promise<DailyMenu[]> => {
     console.error('Erreur lors de la récupération des menus:', e);
     
     // En cas d'erreur, récupérer les menus du localStorage comme fallback
-    if (typeof window !== 'undefined') {
-      try {
-        const savedMenus = localStorage.getItem('savedDailyMenus');
-        if (savedMenus) {
-          const parsedMenus = JSON.parse(savedMenus);
-          if (Array.isArray(parsedMenus)) {
-            return parsedMenus;
+  if (typeof window !== 'undefined') {
+    try {
+      const savedMenus = localStorage.getItem('savedDailyMenus');
+      if (savedMenus) {
+        const parsedMenus = JSON.parse(savedMenus);
+        if (Array.isArray(parsedMenus)) {
+          return parsedMenus;
           }
         }
       } catch (error) {
@@ -151,13 +151,13 @@ export default function DailyMenuPage() {
   const handlePublish = async (menuId: string) => {
     try {
       // Optimistic UI update
-      setMenus(prev => 
-        prev.map(menu => 
-          menu.id === menuId 
-            ? { ...menu, isPublished: true } 
-            : menu
-        )
-      );
+    setMenus(prev => 
+      prev.map(menu => 
+        menu.id === menuId 
+          ? { ...menu, isPublished: true } 
+          : menu
+      )
+    );
 
       // Appeler l'API pour mettre à jour le menu
       const response = await fetch(`/api/daily-menu/${menuId}/publish`, {
@@ -183,7 +183,7 @@ export default function DailyMenuPage() {
   const handleDelete = async (menuId: string) => {
     try {
       // Optimistic UI update
-      setMenus(prev => prev.filter(menu => menu.id !== menuId));
+    setMenus(prev => prev.filter(menu => menu.id !== menuId));
 
       // Appeler l'API pour supprimer le menu
       const response = await fetch(`/api/daily-menu/${menuId}`, {

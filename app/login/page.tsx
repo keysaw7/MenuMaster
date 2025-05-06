@@ -56,7 +56,7 @@ export default function LoginPage() {
           router.push('/dashboard');
         }
       } else {
-        router.push('/dashboard');
+      router.push('/dashboard');
       }
       
     } catch (err) {
@@ -118,7 +118,7 @@ export default function LoginPage() {
           router.push('/dashboard');
         }
       } else {
-        router.push('/dashboard');
+      router.push('/dashboard');
       }
       
     } catch (err) {

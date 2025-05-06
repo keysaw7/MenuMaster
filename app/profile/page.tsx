@@ -24,6 +24,7 @@ export default function ProfilePage() {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
+  const [deletingRestaurantId, setDeletingRestaurantId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -139,6 +140,43 @@ export default function ProfilePage() {
         type: 'error',
         content: 'Erreur de connexion, veuillez réessayer'
       });
+    }
+  };
+
+  const handleDeleteRestaurant = async (restaurantId: string) => {
+    setDeletingRestaurantId(restaurantId);
+    setMessage({ type: '', content: '' });
+
+    try {
+      const response = await fetch(`/api/restaurants/${restaurantId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (response.ok) {
+        // Mettre à jour la liste des restaurants en excluant celui qui vient d'être supprimé
+        setRestaurants(prev => prev.filter(restaurant => restaurant.id !== restaurantId));
+        setMessage({
+          type: 'success',
+          content: 'Restaurant supprimé avec succès'
+        });
+      } else {
+        const data = await response.json();
+        setMessage({
+          type: 'error',
+          content: data.error || 'Erreur lors de la suppression du restaurant'
+        });
+      }
+    } catch (error) {
+      console.error('Erreur lors de la suppression du restaurant:', error);
+      setMessage({
+        type: 'error',
+        content: 'Erreur de connexion, veuillez réessayer'
+      });
+    } finally {
+      setDeletingRestaurantId(null);
     }
   };
 
@@ -295,14 +333,30 @@ export default function ProfilePage() {
                       <ul className="divide-y divide-gray-200">
                         {restaurants.map((restaurant) => (
                           <li key={restaurant.id} className="py-4">
-                            <div className="flex justify-between">
+                            <div className="flex justify-between items-center">
                               <div>
                                 <h4 className="text-base font-medium text-gray-900">{restaurant.name}</h4>
                                 <p className="mt-1 text-sm text-gray-600">{restaurant.description}</p>
                               </div>
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-                                {restaurant.role === 'owner' ? 'Propriétaire' : 'Gestionnaire'}
-                              </span>
+                              {restaurant.role === 'owner' ? (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                                  Propriétaire
+                                </span>
+                              ) : (
+                                <button
+                                  onClick={() => {
+                                    if (confirm(`Êtes-vous sûr de vouloir supprimer le restaurant "${restaurant.name}" ?`)) {
+                                      handleDeleteRestaurant(restaurant.id);
+                                    }
+                                  }}
+                                  disabled={deletingRestaurantId === restaurant.id}
+                                  className={`px-3 py-1 text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none ${
+                                    deletingRestaurantId === restaurant.id ? 'opacity-50 cursor-not-allowed' : ''
+                                  }`}
+                                >
+                                  {deletingRestaurantId === restaurant.id ? 'Suppression...' : 'Supprimer'}
+                                </button>
+                              )}
                             </div>
                           </li>
                         ))}

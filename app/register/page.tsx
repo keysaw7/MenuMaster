@@ -134,7 +134,7 @@ export default function RegisterPage() {
           router.push('/dashboard');
         }
       } else {
-        router.push('/dashboard');
+      router.push('/dashboard');
       }
       
     } catch (err) {

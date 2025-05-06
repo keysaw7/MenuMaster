@@ -2,7 +2,7 @@ export * from './restaurant';
 export * from './menu';
 export * from './ingredient';
 export * from './user';
-export * from './weather';
+export * from './weather'; 
 
 // Réexportation directe des interfaces des nouveaux fichiers
 import type { MediaAsset, MediaType, MediaCategory, MediaUploadRequest, MediaUploadResponse, MediaAssetPreview } from './media';

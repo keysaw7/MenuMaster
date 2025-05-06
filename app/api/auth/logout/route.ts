@@ -14,7 +14,7 @@ export async function GET() {
     expires: new Date(0),
     path: '/',
   });
-  
+
   // Forcer la suppression du cookie auth-status
   response.cookies.set({
     name: 'auth-status',

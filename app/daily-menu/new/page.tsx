@@ -7,6 +7,11 @@ import Link from 'next/link';
 type Restaurant = {
   id: string;
   name: string;
+  cuisine?: string[];
+  address?: {
+    city?: string;
+    country?: string;
+  };
 };
 
 type Ingredient = {
@@ -40,25 +45,6 @@ type DailyMenu = {
   isPublished: boolean;
   weather?: WeatherInfo;
 };
-
-// Données d'exemple pour simuler une réponse de l'API
-const mockIngredients: Ingredient[] = [
-  { id: '1', name: 'Tomates', isAvailable: true, quantity: 5, unit: 'kg' },
-  { id: '2', name: 'Courgettes', isAvailable: true, quantity: 3, unit: 'kg' },
-  { id: '3', name: 'Aubergines', isAvailable: true, quantity: 2, unit: 'kg' },
-  { id: '4', name: 'Poivrons', isAvailable: true, quantity: 1.5, unit: 'kg' },
-  { id: '5', name: 'Oignons', isAvailable: true, quantity: 2, unit: 'kg' },
-  { id: '6', name: 'Ail', isAvailable: true, quantity: 0.5, unit: 'kg' },
-  { id: '7', name: 'Pommes de terre', isAvailable: true, quantity: 8, unit: 'kg' },
-  { id: '8', name: 'Poisson (Bar)', isAvailable: true, quantity: 3, unit: 'kg' },
-  { id: '9', name: 'Viande (Bœuf)', isAvailable: true, quantity: 4, unit: 'kg' },
-  { id: '10', name: 'Poulet', isAvailable: true, quantity: 5, unit: 'kg' },
-  { id: '11', name: 'Œufs', isAvailable: true, quantity: 24, unit: 'unités' },
-  { id: '12', name: 'Crème fraîche', isAvailable: true, quantity: 1, unit: 'l' },
-  { id: '13', name: 'Fromage (Comté)', isAvailable: true, quantity: 1, unit: 'kg' },
-  { id: '14', name: 'Fraises', isAvailable: true, quantity: 1.5, unit: 'kg' },
-  { id: '15', name: 'Chocolat', isAvailable: true, quantity: 0.8, unit: 'kg' },
-];
 
 const mockWeather: WeatherInfo = {
   temperature: 24,
@@ -143,9 +129,24 @@ export default function NewDailyMenuPage() {
         
         // Vérifier qu'on a bien des restaurants
         if (data && data.length > 0) {
-          setRestaurants(data);
+          // S'assurer que les restaurants ont tous un champ cuisine et address
+          const restaurantsWithData = data.map((restaurant: any) => ({
+            ...restaurant,
+            cuisine: restaurant.cuisine || [],
+            address: restaurant.address || {}
+          }));
+          
+          setRestaurants(restaurantsWithData);
           // Sélectionner le premier restaurant par défaut
-          setSelectedRestaurant(data[0].id);
+          setSelectedRestaurant(restaurantsWithData[0].id);
+          
+          // Initialiser la ville avec celle du premier restaurant si disponible
+          if (restaurantsWithData[0]?.address?.city) {
+            const country = restaurantsWithData[0].address.country || 'fr';
+            const formattedCity = `${restaurantsWithData[0].address.city},${country.substring(0, 2).toLowerCase()}`;
+            setCity(formattedCity);
+            console.log(`Ville initialisée avec celle du premier restaurant: ${formattedCity}`);
+          }
         } else {
           // Aucun restaurant trouvé
           throw new Error('Aucun restaurant trouvé pour cet utilisateur');
@@ -188,8 +189,8 @@ export default function NewDailyMenuPage() {
         console.log('Ingrédients récupérés:', data);
         
         // Vérifier qu'on a bien des ingrédients
-        if (data && data.length > 0) {
-          setAvailableIngredients(data);
+        if (data && data.ingredients && data.ingredients.length > 0) {
+          setAvailableIngredients(data.ingredients);
         } else {
           console.log('Aucun ingrédient trouvé pour ce restaurant');
           // Ne pas utiliser d'ingrédients par défaut
@@ -228,6 +229,23 @@ export default function NewDailyMenuPage() {
 
     fetchIngredients();
   }, [selectedRestaurant, mockWeather, city, menuDate]);
+
+  // Mettre à jour la ville lorsque le restaurant sélectionné change
+  useEffect(() => {
+    if (!selectedRestaurant) return;
+    
+    // Trouver le restaurant sélectionné
+    const restaurant = restaurants.find(r => r.id === selectedRestaurant);
+    
+    // Si le restaurant a une adresse avec une ville, l'utiliser pour la météo
+    if (restaurant?.address?.city) {
+      // Format ville,pays pour l'API météo
+      const country = restaurant.address.country || 'fr';
+      const formattedCity = `${restaurant.address.city},${country.substring(0, 2).toLowerCase()}`;
+      setCity(formattedCity);
+      console.log(`Ville récupérée du restaurant: ${formattedCity}`);
+    }
+  }, [selectedRestaurant, restaurants]);
 
   // Mettre à jour la météo lorsque la date change
   useEffect(() => {
@@ -671,6 +689,22 @@ export default function NewDailyMenuPage() {
                   </option>
                 ))}
               </select>
+              
+              {/* Affichage du style culinaire du restaurant sélectionné */}
+              {selectedRestaurant && restaurants.find(r => r.id === selectedRestaurant)?.cuisine && (
+                <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <p className="text-sm text-gray-700">
+                    <strong>Style culinaire :</strong> {
+                      Array.isArray(restaurants.find(r => r.id === selectedRestaurant)?.cuisine) 
+                        ? restaurants.find(r => r.id === selectedRestaurant)?.cuisine?.join(', ')
+                        : 'Non spécifié'
+                    }
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Ce style culinaire sera utilisé par l'Ami Chef Cuistot pour générer un menu authentique.
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="bg-white p-6 rounded-lg shadow-md">
@@ -701,6 +735,14 @@ export default function NewDailyMenuPage() {
                     className="block w-full px-4 py-3 text-base font-medium text-gray-900 border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md shadow-sm"
                   />
                   <p className="text-xs text-gray-500 mt-1">Format: Ville,pays (ex: Lyon,fr ou Rome,it)</p>
+                  {selectedRestaurant && restaurants.find(r => r.id === selectedRestaurant)?.address?.city && (
+                    <p className="text-xs text-blue-600 mt-1">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline-block mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Ville automatiquement récupérée de l'adresse du restaurant
+                    </p>
+                  )}
                 </div>
 
                 {weather && (

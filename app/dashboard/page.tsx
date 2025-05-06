@@ -129,49 +129,52 @@ export default function Dashboard() {
         </Link>
       </div>
       
-      {user && (
-        <div className="bg-white shadow rounded-lg p-6 mb-8">
-          <h2 className="text-lg font-medium text-gray-900">Bienvenue, {user.name} 👋</h2>
-          {restaurants.length > 0 ? (
-            <p className="mt-1 text-sm text-gray-500">
-              Vous gérez {restaurants.length} restaurant{restaurants.length > 1 ? 's' : ''}
-            </p>
-          ) : (
-            <p className="mt-1 text-sm text-gray-500">
-              Vous n'avez pas encore ajouté de restaurant
-            </p>
-          )}
-        </div>
-      )}
+      {/* Réorganisation horizontale des sections Bienvenue et Sélection de restaurant */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        {user && (
+          <div className="bg-white shadow rounded-lg p-6">
+            <h2 className="text-lg font-medium text-gray-900">Bienvenue, {user.name} 👋</h2>
+            {restaurants.length > 0 ? (
+              <p className="mt-1 text-sm text-gray-500">
+                Vous gérez {restaurants.length} restaurant{restaurants.length > 1 ? 's' : ''}
+              </p>
+            ) : (
+              <p className="mt-1 text-sm text-gray-500">
+                Vous n'avez pas encore ajouté de restaurant
+              </p>
+            )}
+          </div>
+        )}
 
-      {/* Sélection du restaurant si l'utilisateur en a plusieurs */}
-      {restaurants.length > 1 && (
-        <div className="bg-white shadow rounded-lg p-6 mb-8">
-          <label htmlFor="restaurant-select" className="block text-sm font-medium text-gray-700 mb-2">
-            Sélectionnez un restaurant
-          </label>
-          <select
-            id="restaurant-select"
-            value={selectedRestaurant || ''}
-            onChange={(e) => setSelectedRestaurant(e.target.value)}
-            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-          >
-            {restaurants.map((restaurant) => (
-              <option key={restaurant.id} value={restaurant.id}>
-                {restaurant.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
+        {/* Sélection du restaurant si l'utilisateur en a plusieurs */}
+        {restaurants.length > 1 && (
+          <div className="bg-white shadow rounded-lg p-6">
+            <label htmlFor="restaurant-select" className="block text-sm font-medium text-gray-700 mb-2">
+              Sélectionnez un restaurant
+            </label>
+            <select
+              id="restaurant-select"
+              value={selectedRestaurant || ''}
+              onChange={(e) => setSelectedRestaurant(e.target.value)}
+              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md text-gray-900 font-medium"
+            >
+              {restaurants.map((restaurant) => (
+                <option key={restaurant.id} value={restaurant.id} className="text-gray-900 font-medium">
+                  {restaurant.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Carte 1: Gestion de Menu */}
         <div className="bg-white shadow rounded-lg overflow-hidden">
           <div className="p-6">
             <div className="flex items-center">
-              <div className="flex-shrink-0 bg-indigo-100 rounded-md p-3">
-                <svg className="h-6 w-6 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="flex-shrink-0 bg-purple-100 rounded-md p-3">
+                <svg className="h-6 w-6 text-purple-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
                 </svg>
               </div>
@@ -186,7 +189,7 @@ export default function Dashboard() {
           <div className="bg-gray-50 px-6 py-4">
             <Link
               href="/menu"
-              className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none"
+              className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none"
             >
               Accéder
             </Link>
@@ -197,8 +200,8 @@ export default function Dashboard() {
         <div className="bg-white shadow rounded-lg overflow-hidden">
           <div className="p-6">
             <div className="flex items-center">
-              <div className="flex-shrink-0 bg-indigo-100 rounded-md p-3">
-                <svg className="h-6 w-6 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="flex-shrink-0 bg-red-100 rounded-md p-3">
+                <svg className="h-6 w-6 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8.25v-1.5m0 1.5c-1.355 0-2.697.056-4.024.166C6.845 8.51 6 9.473 6 10.608v2.513m6-4.87c1.355 0 2.697.055 4.024.165C17.155 8.51 18 9.473 18 10.608v2.513m-3-4.87v-1.5m-6 1.5v-1.5m12 9.75-1.5.75a3.354 3.354 0 01-3 0 3.354 3.354 0 00-3 0 3.354 3.354 0 01-3 0 3.354 3.354 0 00-3 0 3.354 3.354 0 01-3 0L3 16.5m15-3.38a48.474 48.474 0 00-6-.37c-2.032 0-4.034.125-6 .37m12 0c.39.049.777.102 1.163.16 1.07.16 1.837 1.094 1.837 2.175v5.17c0 .62-.504 1.124-1.125 1.124H4.125A1.125 1.125 0 013 20.625v-5.17c0-1.08.768-2.014 1.837-2.174A47.78 47.78 0 016 13.12M12.265 3.11a.375.375 0 11-.53 0L12 2.845l.265.265zm-3 0a.375.375 0 11-.53 0L9 2.845l.265.265zm6 0a.375.375 0 11-.53 0L15 2.845l.265.265z" />
                 </svg>
               </div>
@@ -213,12 +216,44 @@ export default function Dashboard() {
           <div className="bg-gray-50 px-6 py-4">
             <Link
               href="/daily-menu/new"
-              className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none"
+              className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none"
             >
               Créer
             </Link>
           </div>
         </div>
+
+        {/* Carte pour initialiser les ingrédients */}
+        {selectedRestaurant && (
+          <div className="bg-white shadow rounded-lg overflow-hidden">
+            <div className="p-6">
+              <div className="flex items-center">
+                <div className="flex-shrink-0 bg-green-100 rounded-md p-3">
+                  <svg className="h-6 w-6 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <div className="ml-5">
+                  <h3 className="text-lg font-medium text-gray-900">Gestion des ingrédients</h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Gérez la liste des ingrédients pour votre restaurant
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-gray-50 px-6 py-4">
+              <Link
+                href={`/dashboard/restaurants/${selectedRestaurant}/ingredients`}
+                className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none"
+              >
+                Gérer
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* Ligne de séparation */}
+        <div className="col-span-1 md:col-span-2 lg:col-span-3 border-b border-gray-300 my-4"></div>
 
         {/* Carte 3: Ajouter un restaurant */}
         <div className="bg-white shadow rounded-lg overflow-hidden">
@@ -248,8 +283,8 @@ export default function Dashboard() {
         </div>
 
         {/* Carte 4: Profil utilisateur */}
-        <div className="bg-white shadow rounded-lg overflow-hidden">
-          <div className="p-6">
+        <div className="bg-white shadow rounded-lg overflow-hidden flex flex-col">
+          <div className="p-6 flex-1">
             <div className="flex items-center">
               <div className="flex-shrink-0 bg-indigo-100 rounded-md p-3">
                 <svg className="h-6 w-6 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -264,7 +299,7 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-          <div className="bg-gray-50 px-6 py-4">
+          <div className="mt-auto bg-gray-50 px-6 py-4">
             <Link
               href="/profile"
               className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none"
