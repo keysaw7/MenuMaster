@@ -6,11 +6,11 @@ const prisma = new PrismaClient();
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
     // Récupérer l'ID du menu
-    const menuId = params.id;
+    const menuId = context.params.id;
     
     if (!menuId) {
       return NextResponse.json(

@@ -8,9 +8,9 @@ interface RouteParams {
 }
 
 // GET /api/restaurants/[id]/daily-menu - Récupérer le menu du jour
-export async function GET(request: Request, { params }: RouteParams) {
+export async function GET(request: Request, context: { params: { id: string } }) {
   try {
-    const id = params.id;
+    const id = context.params.id;
     const { searchParams } = new URL(request.url);
     const dateParam = searchParams.get('date');
     const date = dateParam || new Date().toISOString().split('T')[0];
@@ -53,9 +53,9 @@ export async function GET(request: Request, { params }: RouteParams) {
 }
 
 // POST /api/restaurants/[id]/daily-menu - Générer un nouveau menu du jour
-export async function POST(request: Request, { params }: RouteParams) {
+export async function POST(request: Request, context: { params: { id: string } }) {
   try {
-    const id = params.id;
+    const id = context.params.id;
     const data = await request.json();
     const { date, weather } = data;
 
@@ -165,9 +165,9 @@ export async function POST(request: Request, { params }: RouteParams) {
 }
 
 // PUT /api/restaurants/[id]/daily-menu - Mettre à jour un menu du jour existant
-export async function PUT(request: Request, { params }: RouteParams) {
+export async function PUT(request: Request, context: { params: { id: string } }) {
   try {
-    const id = params.id;
+    const id = context.params.id;
     const data = await request.json();
     const { date, isPublished, starters, mains, desserts, price } = data;
 
@@ -223,9 +223,9 @@ export async function PUT(request: Request, { params }: RouteParams) {
 }
 
 // DELETE /api/restaurants/[id]/daily-menu - Supprimer un menu du jour
-export async function DELETE(request: Request, { params }: RouteParams) {
+export async function DELETE(request: Request, context: { params: { id: string } }) {
   try {
-    const id = params.id;
+    const id = context.params.id;
     const { searchParams } = new URL(request.url);
     const dateParam = searchParams.get('date');
     

@@ -9,10 +9,10 @@ interface RouteParams {
 }
 
 // Endpoint pour supprimer tous les ingrédients d'un restaurant
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export async function DELETE(request: NextRequest, context: { params: { id: string } }) {
   try {
     // Récupérer l'ID du restaurant
-    const restaurantId = await params.id;
+    const restaurantId = await context.params.id;
     
     if (!restaurantId) {
       return NextResponse.json(

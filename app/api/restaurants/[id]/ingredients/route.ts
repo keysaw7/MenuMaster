@@ -27,10 +27,10 @@ interface IngredientInventoryWithIngredient {
   };
 }
 
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(request: NextRequest, context: { params: { id: string } }) {
   try {
     // Récupérer l'ID du restaurant
-    const restaurantId = await params.id;
+    const restaurantId = await context.params.id;
     
     if (!restaurantId) {
       return NextResponse.json(
@@ -133,10 +133,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 }
 
 // Ajouter une fonction POST pour créer des ingrédients
-export async function POST(request: NextRequest, { params }: RouteParams) {
+export async function POST(request: NextRequest, context: { params: { id: string } }) {
   try {
     // Récupérer l'ID du restaurant depuis les paramètres de route
-    const restaurantId = await params.id;
+    const restaurantId = await context.params.id;
     
     if (!restaurantId) {
       return NextResponse.json(

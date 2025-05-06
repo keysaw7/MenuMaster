@@ -8,9 +8,9 @@ interface RouteParams {
 }
 
 // GET /api/restaurants/[id] - Récupérer un restaurant par son ID
-export async function GET(request: Request, { params }: RouteParams) {
+export async function GET(request: Request, context: { params: { id: string } }) {
   try {
-    const id = await params.id;
+    const id = await context.params.id;
 
     // Cas spécial pour le restaurant démo
     if (id === '1') {
@@ -107,9 +107,9 @@ export async function GET(request: Request, { params }: RouteParams) {
 }
 
 // PUT /api/restaurants/[id] - Mettre à jour un restaurant
-export async function PUT(request: Request, { params }: RouteParams) {
+export async function PUT(request: Request, context: { params: { id: string } }) {
   try {
-    const id = params.id;
+    const id = context.params.id;
     const data = await request.json();
 
     const restaurant = await prisma.restaurant.findUnique({
@@ -148,9 +148,9 @@ export async function PUT(request: Request, { params }: RouteParams) {
 }
 
 // DELETE /api/restaurants/[id] - Supprimer un restaurant
-export async function DELETE(request: Request, { params }: RouteParams) {
+export async function DELETE(request: Request, context: { params: { id: string } }) {
   try {
-    const id = params.id;
+    const id = context.params.id;
 
     const restaurant = await prisma.restaurant.findUnique({
       where: { id },
