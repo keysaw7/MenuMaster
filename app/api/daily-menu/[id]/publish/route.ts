@@ -4,13 +4,15 @@ import { getUserFromToken } from '@/app/lib/auth';
 
 const prisma = new PrismaClient();
 
+export const runtime = 'nodejs';
+
 export async function PUT(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
     // Récupérer l'ID du menu
-    const menuId = context.params.id;
+    const menuId = params.id;
     
     if (!menuId) {
       return NextResponse.json(
