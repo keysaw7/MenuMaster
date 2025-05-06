@@ -314,6 +314,14 @@ export default function ResponsiveNavigation({
                 ))}
               </>
             )}
+            <li>
+              <Link
+                href="/api/auth/logout"
+                className="block py-2 px-4 text-sm text-center text-red-600 hover:bg-gray-100 rounded transition-colors"
+              >
+                Déconnexion
+              </Link>
+            </li>
           </ul>
         </nav>
         

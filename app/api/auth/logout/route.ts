@@ -1,20 +1,54 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { removeAuthCookie } from '@/app/lib/auth';
+import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 
-export async function POST(request: NextRequest) {
-  try {
-    // Supprimer le cookie d'authentification
-    removeAuthCookie();
+export async function GET() {
+  console.log('API de déconnexion (GET) appelée');
+  
+  // Créer une réponse avec redirection
+  const response = NextResponse.redirect(new URL('/', process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'));
+  
+  // Forcer la suppression du cookie auth-token
+  response.cookies.set({
+    name: 'auth-token',
+    value: '',
+    expires: new Date(0),
+    path: '/',
+  });
+  
+  // Forcer la suppression du cookie auth-status
+  response.cookies.set({
+    name: 'auth-status',
+    value: '',
+    expires: new Date(0),
+    path: '/',
+  });
+  
+  console.log('Cookies de session supprimés avec succès');
+  return response;
+}
 
-    // Retourner la réponse
-    return NextResponse.json({
-      message: 'Déconnexion réussie',
-    });
-  } catch (error) {
-    console.error('Erreur lors de la déconnexion:', error);
-    return NextResponse.json(
-      { error: 'Une erreur est survenue lors de la déconnexion' },
-      { status: 500 }
-    );
-  }
+export async function POST() {
+  console.log('API de déconnexion (POST) appelée');
+  
+  // Créer une réponse JSON
+  const response = NextResponse.json({ success: true, message: 'Déconnexion réussie' });
+  
+  // Forcer la suppression du cookie auth-token
+  response.cookies.set({
+    name: 'auth-token',
+    value: '',
+    expires: new Date(0),
+    path: '/',
+  });
+  
+  // Forcer la suppression du cookie auth-status
+  response.cookies.set({
+    name: 'auth-status',
+    value: '',
+    expires: new Date(0),
+    path: '/',
+  });
+  
+  console.log('Cookies de session supprimés avec succès');
+  return response;
 } 

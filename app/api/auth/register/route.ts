@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-import { hashPassword, generateToken, setAuthCookie } from '@/app/lib/auth';
+import { PrismaClient, Prisma } from '@prisma/client';
+import { hashPassword, generateToken } from '@/app/lib/auth';
 
 const prisma = new PrismaClient();
 
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     // Transaction pour créer l'utilisateur et le restaurant
     let result;
     try {
-      result = await prisma.$transaction(async (tx: PrismaClient) => {
+      result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         // Créer l'utilisateur
         const user = await tx.user.create({
           data: {
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
           data: {
             name: restaurantName,
             description: '',
-            cuisine: JSON.stringify([]),
+            cuisine: [], // Stocké directement comme JSON (tableau vide)
             address: {},
             contact: { email },
             hours: {},
@@ -124,18 +124,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Définir le cookie d'authentification
-    try {
-      setAuthCookie(token);
-      console.log('Cookie d\'authentification défini avec succès');
-    } catch (cookieError) {
-      console.error('Erreur lors de la définition du cookie:', cookieError);
-      // On continue même si le cookie échoue, car on peut toujours retourner le token
-    }
-
-    // Préparer et envoyer la réponse
-    console.log('Inscription réussie, envoi de la réponse');
-    const response = {
+    // Préparer les données de réponse
+    const responseData = {
       message: 'Inscription réussie',
       user: {
         id: result.user.id,
@@ -146,10 +136,37 @@ export async function POST(request: NextRequest) {
       restaurant: {
         id: result.restaurant.id,
         name: result.restaurant.name,
-      }
+      },
+      token: token // Inclure le token pour le débogage et l'utilisation côté client
     };
     
-    return NextResponse.json(response, { status: 201 });
+    // Créer la réponse
+    const response = NextResponse.json(responseData, { status: 201 });
+
+    // Définir le cookie d'authentification dans la réponse
+    response.cookies.set({
+      name: 'auth-token',
+      value: token,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 60 * 60 * 24 * 7, // 7 jours
+      path: '/',
+      sameSite: 'strict',
+    });
+    
+    // Ajouter un cookie lisible côté client pour vérifier l'état de connexion
+    response.cookies.set({
+      name: 'auth-status',
+      value: 'logged-in',
+      httpOnly: false, // Accessible en JavaScript
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 60 * 60 * 24 * 7, // 7 jours
+      path: '/',
+      sameSite: 'strict',
+    });
+    
+    console.log('Inscription réussie, envoi de la réponse');
+    return response;
   } catch (error) {
     console.error('Erreur globale lors de l\'inscription:', error);
     return NextResponse.json(

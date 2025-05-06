@@ -131,18 +131,38 @@ export default function NewDailyMenuPage() {
     const fetchRestaurants = async () => {
       setLoading(true);
       try {
-        // Simuler la réponse API
-        setTimeout(() => {
-          setRestaurants([
-            { id: '1', name: 'Le Bistrot Français' },
-            { id: '2', name: 'La Table Provençale' }
-          ]);
-          setSelectedRestaurant('1');
-          setLoading(false);
-        }, 500);
+        // Appel à l'API pour récupérer les restaurants de l'utilisateur
+        const response = await fetch('/api/restaurants');
+        
+        if (!response.ok) {
+          throw new Error('Erreur lors de la récupération des restaurants');
+        }
+        
+        const data = await response.json();
+        console.log('Restaurants récupérés:', data);
+        
+        // Vérifier qu'on a bien des restaurants
+        if (data && data.length > 0) {
+          setRestaurants(data);
+          // Sélectionner le premier restaurant par défaut
+          setSelectedRestaurant(data[0].id);
+        } else {
+          // Aucun restaurant trouvé
+          throw new Error('Aucun restaurant trouvé pour cet utilisateur');
+        }
       } catch (err) {
-        setError('Impossible de charger vos restaurants');
-        console.error(err);
+        console.error('Erreur lors du chargement des restaurants:', err);
+        setError(err instanceof Error ? err.message : 'Impossible de charger vos restaurants');
+        
+        // Fallback avec des restaurants fictifs
+        console.log('Utilisation de restaurants fictifs en fallback');
+        setRestaurants([
+          { id: '1', name: 'Le Bistrot Français' },
+          { id: '2', name: 'La Table Provençale' }
+        ]);
+        setSelectedRestaurant('1');
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -155,16 +175,59 @@ export default function NewDailyMenuPage() {
 
     const fetchIngredients = async () => {
       setLoading(true);
-      // Simuler la réponse API
-      setTimeout(() => {
-        setAvailableIngredients(mockIngredients);
+      
+      try {
+        // Appel à l'API pour récupérer les ingrédients du restaurant sélectionné
+        const response = await fetch(`/api/restaurants/${selectedRestaurant}/ingredients`);
+        
+        if (!response.ok) {
+          throw new Error('Erreur lors de la récupération des ingrédients');
+        }
+        
+        const data = await response.json();
+        console.log('Ingrédients récupérés:', data);
+        
+        // Vérifier qu'on a bien des ingrédients
+        if (data && data.length > 0) {
+          setAvailableIngredients(data);
+        } else {
+          console.log('Aucun ingrédient trouvé pour ce restaurant');
+          // Ne pas utiliser d'ingrédients par défaut
+          setAvailableIngredients([]);
+        }
+        
+        // Récupérer également les données météo
+        try {
+          const weatherResponse = await fetch(`/api/weather?date=${menuDate}&city=${encodeURIComponent(city)}`);
+          if (weatherResponse.ok) {
+            const weatherData = await weatherResponse.json();
+            setWeather({
+              temperature: weatherData.temperature,
+              condition: weatherData.condition || 'Inconnu',
+              icon: weatherData.icon || '🌡️'
+            });
+          } else {
+            // En cas d'erreur, utiliser les données simulées
+            setWeather(mockWeather);
+          }
+        } catch (weatherError) {
+          console.error('Erreur lors de la récupération des données météo:', weatherError);
+          setWeather(mockWeather);
+        }
+      } catch (err) {
+        console.error('Erreur lors du chargement des ingrédients:', err);
+        setError(err instanceof Error ? err.message : 'Impossible de charger les ingrédients');
+        
+        // Ne pas utiliser d'ingrédients par défaut
+        setAvailableIngredients([]);
         setWeather(mockWeather);
+      } finally {
         setLoading(false);
-      }, 500);
+      }
     };
 
     fetchIngredients();
-  }, [selectedRestaurant]);
+  }, [selectedRestaurant, mockWeather, city, menuDate]);
 
   // Mettre à jour la météo lorsque la date change
   useEffect(() => {
@@ -242,70 +305,160 @@ export default function NewDailyMenuPage() {
     setGenerating(true);
     setError(null);
 
-    // Simuler la génération du menu
-    setTimeout(() => {
-      setGeneratedMenu(mockGeneratedMenu);
-      setGenerating(false);
+    try {
+      // Récupérer la condition météo à partir de l'état
+      if (!weather) {
+        throw new Error('Impossible de générer un menu sans données météo');
+      }
+      
+      // Transforme la condition météo en type attendu par l'API
+      let weatherCondition: string;
+      
+      // Mapper les conditions météo de l'API Weather vers notre format interne
+      switch(weather.condition.toLowerCase()) {
+        case 'ensoleillé':
+        case 'clair':
+        case 'dégagé':
+          weatherCondition = 'clear';
+          break;
+        case 'partiellement nuageux':
+        case 'quelques nuages':
+          weatherCondition = 'partlyCloudy';
+          break;
+        case 'nuageux':
+          weatherCondition = 'cloudy';
+          break;
+        case 'pluvieux':
+        case 'pluie':
+        case 'pluie légère':
+          weatherCondition = 'rainy';
+          break;
+        case 'orageux':
+        case 'orage':
+          weatherCondition = 'stormy';
+          break;
+        case 'neigeux':
+        case 'neige':
+          weatherCondition = 'snowy';
+          break;
+        case 'brumeux':
+        case 'brouillard':
+          weatherCondition = 'foggy';
+          break;
+        case 'venteux':
+        case 'vent':
+          weatherCondition = 'windy';
+          break;
+        default:
+          // Utiliser la température pour déterminer s'il fait chaud ou froid
+          weatherCondition = weather.temperature > 20 ? 'hot' : 'cold';
+      }
+      
+      console.log('Condition météo pour la génération:', weatherCondition);
+      
+      // Récupérer les ingrédients sélectionnés
+      const selectedIngredientsData = availableIngredients.filter(
+        ingredient => selectedIngredients.includes(ingredient.id)
+      );
+      
+      // Appel à notre nouvelle API de génération de menu
+      const response = await fetch('/api/daily-menu/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          weatherCondition,
+          temperature: weather.temperature,
+          date: menuDate,
+          availableIngredients: selectedIngredientsData,
+          city: city.split(',')[0] // Extrait juste le nom de la ville
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erreur lors de la génération du menu');
+      }
+      
+      const generatedMenuData = await response.json();
+      console.log('Menu généré avec succès:', generatedMenuData);
+      
+      setGeneratedMenu({
+        id: `menu_${Date.now()}`,
+        restaurantId: selectedRestaurant,
+        date: menuDate,
+        starters: generatedMenuData.starters,
+        mains: generatedMenuData.mains,
+        desserts: generatedMenuData.desserts,
+        price: generatedMenuData.price,
+        isPublished: false,
+        weather: weather
+      });
+      
       setShowMenu(true);
-    }, 1500);
+    } catch (error) {
+      console.error('Erreur lors de la génération du menu:', error);
+      setError(error instanceof Error ? error.message : 'Une erreur est survenue lors de la génération du menu');
+      
+      // Fallback en cas d'erreur - utiliser le menu simulé
+      setTimeout(() => {
+        setGeneratedMenu(mockGeneratedMenu);
+        setShowMenu(true);
+      }, 1000);
+    } finally {
+      setGenerating(false);
+    }
   };
 
-  const handleSaveMenu = () => {
+  const handleSaveMenu = async () => {
     if (!generatedMenu) return;
     
-    // Créer un objet menu avec toutes les informations nécessaires
-    const menuToSave = {
-      id: `menu_${Date.now()}`, // Générer un ID unique
-      restaurantId: selectedRestaurant,
-      restaurantName: restaurants.find(r => r.id === selectedRestaurant)?.name || 'Restaurant',
-      date: menuDate,
-      starters: generatedMenu.starters,
-      mains: generatedMenu.mains,
-      desserts: generatedMenu.desserts,
-      price: menuPrice ? parseFloat(menuPrice) : undefined,
-      isPublished: false,
-      weather: weather || undefined
-    };
+    setLoading(true);
+    setError(null);
     
-    console.log('Menu à sauvegarder:', menuToSave);
-    
-    // Sauvegarder dans localStorage
-    if (typeof window !== 'undefined') {
-      try {
-        // Récupérer les menus existants ou initialiser un tableau vide
-        let savedMenus = [];
-        const savedMenusJSON = localStorage.getItem('savedDailyMenus');
-        
-        if (savedMenusJSON) {
-          savedMenus = JSON.parse(savedMenusJSON);
-          console.log('Menus existants récupérés:', savedMenus);
-        } else {
-          console.log('Aucun menu existant trouvé');
-        }
-        
-        // Vérifier que savedMenus est bien un tableau
-        if (!Array.isArray(savedMenus)) {
-          console.warn('savedMenus n\'est pas un tableau, initialisation d\'un nouveau tableau');
-          savedMenus = [];
-        }
-        
-        // Ajouter le nouveau menu
-        savedMenus.push(menuToSave);
-        console.log('Menus après ajout:', savedMenus);
-        
-        // Sauvegarder le tableau mis à jour
-        localStorage.setItem('savedDailyMenus', JSON.stringify(savedMenus));
-        console.log('Menus sauvegardés avec succès dans localStorage');
-        
-        // Afficher une notification de succès
-        alert('Menu sauvegardé avec succès !');
-        
-        // Rediriger vers le dashboard des menus
-        router.push('/dashboard/daily-menu');
-      } catch (error) {
-        console.error('Erreur lors de la sauvegarde du menu:', error);
-        setError('Une erreur est survenue lors de la sauvegarde du menu');
+    try {
+      // Créer un objet menu avec toutes les informations nécessaires
+      const menuToSave = {
+        restaurantId: selectedRestaurant,
+        date: menuDate,
+        starters: generatedMenu.starters,
+        mains: generatedMenu.mains,
+        desserts: generatedMenu.desserts,
+        price: menuPrice ? parseFloat(menuPrice) : generatedMenu.price,
+        isPublished: false,
+        weather: weather || undefined
+      };
+      
+      console.log('Menu à sauvegarder:', menuToSave);
+      
+      // Appel à l'API de sauvegarde des menus
+      const response = await fetch('/api/daily-menu/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(menuToSave),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erreur lors de la sauvegarde du menu');
       }
+      
+      const result = await response.json();
+      console.log('Menu sauvegardé avec succès:', result);
+      
+      // Afficher une notification de succès
+      alert(`Menu sauvegardé avec succès pour le restaurant ${restaurants.find(r => r.id === selectedRestaurant)?.name} !`);
+      
+      // Rediriger vers le dashboard des menus
+      router.push('/dashboard/daily-menu');
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde du menu:', error);
+      setError(error instanceof Error ? error.message : 'Une erreur est survenue lors de la sauvegarde du menu');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -316,13 +469,25 @@ export default function NewDailyMenuPage() {
         Sélectionnez les ingrédients que vous souhaitez mettre en valeur dans votre menu (optionnel).
       </p>
       
-      <div className="flex flex-wrap gap-3 max-h-96 overflow-y-auto p-2">
-        {loading ? (
-          <div className="w-full py-10 flex justify-center items-center">
-            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-indigo-500"></div>
-          </div>
-        ) : (
-          availableIngredients.map(ingredient => (
+      {loading ? (
+        <div className="w-full py-10 flex justify-center items-center">
+          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-indigo-500"></div>
+        </div>
+      ) : availableIngredients.length === 0 ? (
+        <div className="py-8 text-center">
+          <p className="text-gray-600 mb-4">Aucun ingrédient disponible pour ce restaurant.</p>
+          <Link href={`/dashboard/restaurants/${selectedRestaurant}/ingredients`} className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors font-medium">
+            <span className="inline-block mr-2">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+            </span>
+            Ajouter des ingrédients
+          </Link>
+        </div>
+      ) : (
+        <div className="flex flex-wrap gap-3 max-h-96 overflow-y-auto p-2">
+          {availableIngredients.map(ingredient => (
             <div 
               key={ingredient.id}
               className={`flex items-center p-4 rounded-lg cursor-pointer transition-all ${
@@ -343,9 +508,9 @@ export default function NewDailyMenuPage() {
                 {ingredient.quantity} {ingredient.unit}
               </span>
             </div>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 
@@ -448,7 +613,7 @@ export default function NewDailyMenuPage() {
   return (
     <div className="container mx-auto px-4 py-10 max-w-5xl">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Générer un menu du jour</h1>
+        <h1 className="text-3xl font-bold text-red-600">Générer un menu du jour</h1>
         <div className="flex space-x-4">
           <Link
             href="/dashboard/daily-menu"

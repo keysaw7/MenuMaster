@@ -80,29 +80,42 @@ const mockSavedMenus: DailyMenu[] = [
   }
 ];
 
-// Essayer de récupérer des menus sauvegardés dans le localStorage
-const getSavedMenus = (): DailyMenu[] => {
-  if (typeof window !== 'undefined') {
-    try {
-      const savedMenus = localStorage.getItem('savedDailyMenus');
-      if (savedMenus) {
-        const parsedMenus = JSON.parse(savedMenus);
-        console.log('Menus récupérés du localStorage:', parsedMenus);
-        
-        // Vérifier que c'est bien un tableau
-        if (Array.isArray(parsedMenus)) {
-          return parsedMenus;
-        } else {
-          console.error('Les menus sauvegardés ne sont pas un tableau:', parsedMenus);
-        }
-      } else {
-        console.log('Aucun menu trouvé dans localStorage, utilisation des données de test');
-      }
-    } catch (e) {
-      console.error('Erreur lors de la lecture des menus sauvegardés:', e);
+// Essayer de récupérer des menus sauvegardés via l'API
+const fetchDailyMenus = async (): Promise<DailyMenu[]> => {
+  try {
+    const response = await fetch('/api/daily-menu', {
+      headers: {
+        'Cache-Control': 'no-cache',
+      },
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Erreur HTTP: ${response.status}`);
     }
+    
+    const data = await response.json();
+    console.log('Menus récupérés de l\'API:', data);
+    return data;
+  } catch (e) {
+    console.error('Erreur lors de la récupération des menus:', e);
+    
+    // En cas d'erreur, récupérer les menus du localStorage comme fallback
+    if (typeof window !== 'undefined') {
+      try {
+        const savedMenus = localStorage.getItem('savedDailyMenus');
+        if (savedMenus) {
+          const parsedMenus = JSON.parse(savedMenus);
+          if (Array.isArray(parsedMenus)) {
+            return parsedMenus;
+          }
+        }
+      } catch (error) {
+        console.error('Erreur lors de la lecture des menus du localStorage:', error);
+      }
+    }
+    
+    return mockSavedMenus;
   }
-  return mockSavedMenus;
 };
 
 export default function DailyMenuPage() {
@@ -111,13 +124,13 @@ export default function DailyMenuPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Fonction pour charger les menus depuis localStorage
-  const loadMenus = () => {
+  // Fonction pour charger les menus depuis l'API
+  const loadMenus = async () => {
     try {
       setLoading(true);
-      const savedMenus = getSavedMenus();
-      console.log('Menus chargés dans le composant:', savedMenus);
-      setMenus(savedMenus);
+      const menus = await fetchDailyMenus();
+      console.log('Menus chargés dans le composant:', menus);
+      setMenus(menus);
     } catch (error) {
       console.error('Erreur lors du chargement des menus:', error);
     } finally {
@@ -128,66 +141,65 @@ export default function DailyMenuPage() {
   // Fonction pour rafraîchir manuellement les menus
   const handleRefresh = () => {
     setRefreshing(true);
-    try {
-      // Vider le cache du routeur si possible
-      if (typeof window !== 'undefined') {
-        // Force refresh from server
-        window.location.reload();
-      } else {
-        loadMenus();
-        setTimeout(() => setRefreshing(false), 500);
-      }
-    } catch (error) {
-      console.error('Erreur lors du rafraîchissement:', error);
-      setRefreshing(false);
-    }
+    loadMenus().finally(() => setRefreshing(false));
   };
 
   useEffect(() => {
     loadMenus();
-    
-    // Ajouter un écouteur d'événement pour détecter les changements de localStorage
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'savedDailyMenus') {
-        console.log('Changement détecté dans localStorage, rechargement des menus');
-        loadMenus();
-      }
-    };
-    
-    window.addEventListener('storage', handleStorageChange);
-    
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
   }, []);
 
-  const handlePublish = (menuId: string) => {
-    setMenus(prev => 
-      prev.map(menu => 
-        menu.id === menuId 
-          ? { ...menu, isPublished: true } 
-          : menu
-      )
-    );
-
-    // Sauvegarder dans localStorage
-    if (typeof window !== 'undefined') {
-      const updatedMenus = menus.map(menu => 
-        menu.id === menuId 
-          ? { ...menu, isPublished: true } 
-          : menu
+  const handlePublish = async (menuId: string) => {
+    try {
+      // Optimistic UI update
+      setMenus(prev => 
+        prev.map(menu => 
+          menu.id === menuId 
+            ? { ...menu, isPublished: true } 
+            : menu
+        )
       );
-      localStorage.setItem('savedDailyMenus', JSON.stringify(updatedMenus));
+
+      // Appeler l'API pour mettre à jour le menu
+      const response = await fetch(`/api/daily-menu/${menuId}/publish`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Erreur lors de la publication du menu');
+      }
+
+      // Recharger les menus pour être sûr d'avoir les données à jour
+      await loadMenus();
+    } catch (error) {
+      console.error('Erreur lors de la publication du menu:', error);
+      // Annuler la mise à jour UI en cas d'erreur
+      await loadMenus();
     }
   };
 
-  const handleDelete = (menuId: string) => {
-    setMenus(prev => prev.filter(menu => menu.id !== menuId));
+  const handleDelete = async (menuId: string) => {
+    try {
+      // Optimistic UI update
+      setMenus(prev => prev.filter(menu => menu.id !== menuId));
 
-    // Sauvegarder dans localStorage
-    if (typeof window !== 'undefined') {
-      const updatedMenus = menus.filter(menu => menu.id !== menuId);
-      localStorage.setItem('savedDailyMenus', JSON.stringify(updatedMenus));
+      // Appeler l'API pour supprimer le menu
+      const response = await fetch(`/api/daily-menu/${menuId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Erreur lors de la suppression du menu');
+      }
+
+      // Recharger les menus pour être sûr d'avoir les données à jour
+      await loadMenus();
+    } catch (error) {
+      console.error('Erreur lors de la suppression du menu:', error);
+      // Annuler la mise à jour UI en cas d'erreur
+      await loadMenus();
     }
   };
 

@@ -21,6 +21,12 @@ export default function MenuPage() {
     glutenFree: false,
     dairyFree: false,
   });
+  // État pour le modal "Ami Serveur"
+  const [showAssistantModal, setShowAssistantModal] = useState(false);
+  const [assistantPrompt, setAssistantPrompt] = useState('');
+  const [assistantResponse, setAssistantResponse] = useState('');
+  const [recommendedDishes, setRecommendedDishes] = useState<Dish[]>([]);
+  const [assistantLoading, setAssistantLoading] = useState(false);
 
   useEffect(() => {
     const mockDishes: Dish[] = [
@@ -317,6 +323,42 @@ export default function MenuPage() {
     }));
   };
 
+  // Fonction pour gérer la soumission du prompt à l'API Ami Serveur
+  const handleAssistantSubmit = async () => {
+    if (!assistantPrompt.trim()) return;
+    
+    setAssistantLoading(true);
+    setAssistantResponse('');
+    setRecommendedDishes([]);
+    
+    try {
+      const response = await fetch('/api/recommendation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          preferences: assistantPrompt,
+          allergens: activeFilters.glutenFree ? ['gluten'] : [],
+          restrictions: activeFilters.vegetarian ? ['végétarien'] : [],
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Erreur lors de la communication avec l\'Ami Serveur');
+      }
+      
+      const data = await response.json();
+      setAssistantResponse(data.recommendation);
+      setRecommendedDishes(data.dishes);
+    } catch (error) {
+      console.error('Erreur:', error);
+      setAssistantResponse('Désolé, je n\'ai pas pu traiter votre demande. Veuillez réessayer plus tard.');
+    } finally {
+      setAssistantLoading(false);
+    }
+  };
+
   // Affichage des détails d'un plat
   const renderDishDetails = () => {
     if (!selectedDish) return null;
@@ -415,10 +457,117 @@ export default function MenuPage() {
     );
   };
 
+  // Rendu du modal Ami Serveur
+  const renderAssistantModal = () => {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
+        <div className="relative bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-auto">
+          <button 
+            onClick={() => setShowAssistantModal(false)}
+            className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 focus:outline-none"
+          >
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          
+          <div className="p-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Ami Serveur</h2>
+            <p className="text-gray-600 mb-4">
+              Posez-moi vos questions sur nos plats ou demandez-moi des recommandations selon vos préférences.
+            </p>
+            
+            <div className="mb-6">
+              <textarea
+                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                rows={4}
+                placeholder="Exemple : Je cherche un plat végétarien ou quels sont vos plats signature ?"
+                value={assistantPrompt}
+                onChange={(e) => setAssistantPrompt(e.target.value)}
+              ></textarea>
+              
+              <button
+                onClick={handleAssistantSubmit}
+                disabled={assistantLoading || !assistantPrompt.trim()}
+                className="mt-2 w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+              >
+                {assistantLoading ? 'Réflexion en cours...' : 'Demander conseil'}
+              </button>
+            </div>
+            
+            {assistantLoading && (
+              <div className="flex justify-center my-6">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+              </div>
+            )}
+            
+            {assistantResponse && (
+              <div className="bg-gray-50 p-4 rounded-lg mb-6">
+                <h3 className="font-medium text-gray-900 mb-2">Réponse :</h3>
+                <p className="text-gray-700 whitespace-pre-line">{assistantResponse}</p>
+              </div>
+            )}
+            
+            {recommendedDishes.length > 0 && (
+              <div>
+                <h3 className="font-medium text-gray-900 mb-2">Plats recommandés :</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {recommendedDishes.map((dish) => (
+                    <div 
+                      key={dish.id} 
+                      className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow duration-300"
+                      onClick={() => {
+                        setSelectedDish(dish);
+                        setShowAssistantModal(false);
+                      }}
+                    >
+                      <div className="relative h-32">
+                        {dish.imageUrl ? (
+                          <Image
+                            src={dish.imageUrl}
+                            alt={dish.name}
+                            fill
+                            className="object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                            <span className="text-gray-400">Image non disponible</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-3">
+                        <h4 className="font-medium text-gray-900">{dish.name}</h4>
+                        <p className="text-sm text-gray-500 line-clamp-2">{dish.description}</p>
+                        <p className="mt-1 font-medium text-indigo-600">{dish.price} €</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <>      
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         <h1 className="text-3xl md:text-4xl font-bold text-center mb-8">Notre Carte</h1>
+        
+        {/* Bouton Ami Serveur flottant */}
+        <div className="fixed bottom-6 right-6 z-10">
+          <button
+            onClick={() => setShowAssistantModal(true)}
+            className="bg-indigo-600 text-white rounded-full p-4 shadow-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            aria-label="Ami Serveur"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+            </svg>
+          </button>
+        </div>
         
         {/* Barre de recherche et filtres */}
         <div className="mb-8">
@@ -579,6 +728,9 @@ export default function MenuPage() {
       
       {/* Modal de détails du plat */}
       {selectedDish && renderDishDetails()}
+      
+      {/* Modal Ami Serveur */}
+      {showAssistantModal && renderAssistantModal()}
     </>
   );
 } 

@@ -15,6 +15,8 @@ export interface Menu {
     seasonEnd?: string;   // MM-DD format
   };
   categories: MenuCategory[];
+  themeId?: string;       // Référence à un thème
+  template?: string;      // Identifiant du template ou référence
   createdAt: Date;
   updatedAt: Date;
 }
@@ -75,6 +77,8 @@ export interface DailyMenu {
   desserts: MenuItem[];
   price?: number;
   isPublished: boolean;
+  themeId?: string;       // Référence à un thème
+  template?: string;      // Identifiant du template ou référence
   createdAt: Date;
   updatedAt: Date;
 } 

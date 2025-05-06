@@ -1,278 +1,261 @@
+import OpenAI from 'openai';
 import { WeatherCondition, weatherFoodSuggestions } from '@/app/models/weather';
-import { MenuItem } from '@/app/models/menu';
 import { Ingredient } from '@/app/models/ingredient';
 
-interface MenuGenerationOptions {
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+export type MenuGenerationOptions = {
   weatherCondition: WeatherCondition;
+  temperature?: number;
+  date?: string;
   availableIngredients?: Ingredient[];
   cuisine?: string[];
   dietaryRestrictions?: string[];
-  budget?: 'low' | 'medium' | 'high';
-  seasonality?: 'winter' | 'spring' | 'summer' | 'fall';
-}
-
-// Interface pour les plats générés par l'IA
-interface GeneratedMenuItem extends MenuItem {
-  category: 'starter' | 'main' | 'dessert';
-}
+  city?: string;
+};
 
 /**
  * Générateur de menus basés sur les conditions météorologiques et d'autres facteurs
  */
 export async function generateDailyMenu(options: MenuGenerationOptions) {
-  const { weatherCondition, availableIngredients = [], cuisine = [], dietaryRestrictions = [] } = options;
+  const { 
+    weatherCondition, 
+    temperature,
+    date,
+    availableIngredients = [], 
+    cuisine = [], 
+    dietaryRestrictions = [],
+    city = 'Paris'
+  } = options;
   
-  // TODO: Dans une version future, cette fonction pourrait appeler une API d'IA
-  // comme OpenAI ou un autre service pour générer des menus plus pertinents et variés.
-  // Pour l'instant, nous utilisons une logique simple basée sur des suggestions prédéfinies.
-  
-  // Simuler un délai d'appel à une API
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  
-  // Récupérer les suggestions pour les conditions météo
-  const suggestions = weatherFoodSuggestions[weatherCondition];
-  
-  if (!suggestions) {
-    throw new Error(`Pas de suggestions disponibles pour la condition météo: ${weatherCondition}`);
+  try {
+    // Extraire les noms des ingrédients disponibles pour le prompt
+    const ingredientNames = availableIngredients.map(ing => ing.name);
+
+    // Construire le prompt pour l'IA
+    const prompt = buildAIPrompt({
+      weatherCondition,
+      temperature,
+      date,
+      availableIngredients: ingredientNames,
+      cuisine,
+      dietaryRestrictions,
+      city
+    });
+
+    // Appeler l'API OpenAI
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "system",
+          content: "Tu es un chef cuisinier expert qui crée des menus du jour adaptés aux conditions météo, ingrédients disponibles et préférences culinaires. Tu réponds toujours en JSON valide sans aucun texte supplémentaire."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      temperature: 0.7,
+      response_format: { type: "json_object" }
+    });
+
+    // Récupérer et parser la réponse
+    const responseContent = completion.choices[0].message.content;
+    
+    if (!responseContent) {
+      throw new Error("L'API n'a pas renvoyé de contenu valide");
+    }
+    
+    const generatedMenu = JSON.parse(responseContent);
+    
+    // S'assurer que le menu est bien structuré
+    if (!generatedMenu.starters || !generatedMenu.mains || !generatedMenu.desserts) {
+      throw new Error("Le format du menu généré est invalide");
+    }
+    
+    console.log("Menu généré avec succès:", generatedMenu);
+    
+    return {
+      starters: generatedMenu.starters,
+      mains: generatedMenu.mains,
+      desserts: generatedMenu.desserts,
+      price: generatedMenu.price || Math.round(28 + (Math.random() * 8 - 4)), // Prix par défaut si non fourni
+      weatherCondition,
+    };
+  } catch (error) {
+    console.error("Erreur lors de la génération du menu:", error);
+    
+    // En cas d'erreur, utiliser le fallback avec les suggestions prédéfinies
+    console.log("Utilisation du système de fallback pour la génération du menu");
+    
+    // Récupérer les suggestions pour les conditions météo
+    const suggestions = weatherFoodSuggestions[weatherCondition];
+    
+    if (!suggestions) {
+      throw new Error(`Pas de suggestions disponibles pour la condition météo: ${weatherCondition}`);
+    }
+    
+    // Générer les plats du menu avec l'ancienne méthode
+    const starters = generateDishes('starter', 2, suggestions, cuisine, availableIngredients, dietaryRestrictions);
+    const mains = generateDishes('main', 2, suggestions, cuisine, availableIngredients, dietaryRestrictions);
+    const desserts = generateDishes('dessert', 1, suggestions, cuisine, availableIngredients, dietaryRestrictions);
+    
+    // Calculer un prix total pour le menu
+    const basePrice = 28; // Prix de base
+    
+    // Prix réel entre 26 et 34 selon la complexité des plats
+    const totalPrice = Math.round(basePrice + (Math.random() * 8 - 4));
+    
+    return {
+      starters,
+      mains,
+      desserts,
+      price: totalPrice,
+      weatherCondition,
+    };
   }
-  
-  // Générer les plats du menu
-  const starters = generateDishes('starter', 2, suggestions, cuisine, availableIngredients, dietaryRestrictions);
-  const mains = generateDishes('main', 2, suggestions, cuisine, availableIngredients, dietaryRestrictions);
-  const desserts = generateDishes('dessert', 1, suggestions, cuisine, availableIngredients, dietaryRestrictions);
-  
-  // Calculer un prix total pour le menu
-  const basePrice = 28; // Prix de base
-  
-  // Prix réel entre 26 et 34 selon la complexité des plats
-  const totalPrice = Math.round(basePrice + (Math.random() * 8 - 4));
-  
-  return {
-    starters,
-    mains,
-    desserts,
-    price: totalPrice,
-    weatherCondition,
-  };
 }
 
 /**
- * Génère un ensemble de plats selon les critères
+ * Construit le prompt à envoyer à l'API OpenAI
+ */
+function buildAIPrompt(options: {
+  weatherCondition: WeatherCondition;
+  temperature?: number;
+  date?: string;
+  availableIngredients?: string[];
+  cuisine?: string[];
+  dietaryRestrictions?: string[];
+  city?: string;
+}) {
+  const {
+    weatherCondition,
+    temperature,
+    date,
+    availableIngredients,
+    cuisine,
+    dietaryRestrictions,
+    city
+  } = options;
+
+  // Construire une description lisible de la météo
+  let weatherDescription = `Le temps est ${weatherCondition.toLowerCase()}`;
+  if (temperature !== undefined) {
+    weatherDescription += ` avec une température de ${temperature}°C`;
+  }
+  
+  // Formater les informations sur les cuisines préférées
+  const cuisineInfo = cuisine && cuisine.length > 0 
+    ? `Le restaurant se spécialise dans la cuisine ${cuisine.join(', ')}.` 
+    : `Le restaurant propose une cuisine française traditionnelle.`;
+  
+  // Formater les restrictions alimentaires
+  const restrictionsInfo = dietaryRestrictions && dietaryRestrictions.length > 0
+    ? `Le menu doit respecter les restrictions alimentaires suivantes : ${dietaryRestrictions.join(', ')}.`
+    : "";
+  
+  // Formater les ingrédients disponibles
+  const ingredientsInfo = availableIngredients && availableIngredients.length > 0
+    ? `Les ingrédients disponibles sont : ${availableIngredients.join(', ')}.`
+    : "Tous les ingrédients de saison sont disponibles.";
+  
+  // Construire le prompt complet
+  return `
+Génère un menu du jour pour un restaurant à ${city}${date ? ` le ${date}` : ' aujourd\'hui'}.
+${weatherDescription}.
+${cuisineInfo}
+${restrictionsInfo}
+${ingredientsInfo}
+
+Le menu doit être composé de:
+- 2 entrées (starters)
+- 2 plats principaux (mains)
+- 1 dessert (desserts)
+
+Chaque plat doit avoir:
+- Un nom (name)
+- Une description détaillée et appétissante (description)
+- Une liste d'ingrédients principaux (ingredients)
+
+Suggère également un prix pour le menu complet (price).
+
+Fournis la réponse sous forme de JSON avec le format suivant:
+{
+  "starters": [
+    {
+      "name": "Nom de l'entrée 1",
+      "description": "Description détaillée",
+      "ingredients": ["ingrédient 1", "ingrédient 2", "..."]
+    },
+    {
+      "name": "Nom de l'entrée 2",
+      "description": "Description détaillée",
+      "ingredients": ["ingrédient 1", "ingrédient 2", "..."]
+    }
+  ],
+  "mains": [
+    {
+      "name": "Nom du plat 1",
+      "description": "Description détaillée",
+      "ingredients": ["ingrédient 1", "ingrédient 2", "..."]
+    },
+    {
+      "name": "Nom du plat 2",
+      "description": "Description détaillée",
+      "ingredients": ["ingrédient 1", "ingrédient 2", "..."]
+    }
+  ],
+  "desserts": [
+    {
+      "name": "Nom du dessert",
+      "description": "Description détaillée",
+      "ingredients": ["ingrédient 1", "ingrédient 2", "..."]
+    }
+  ],
+  "price": 32
+}
+`;
+}
+
+/**
+ * Génère des plats à partir des suggestions pour une catégorie spécifique.
  */
 function generateDishes(
   category: 'starter' | 'main' | 'dessert',
   count: number,
-  suggestions: any,
-  cuisine: string[],
+  suggestions: {
+    suitable: string[];
+    avoid: string[];
+    ingredients: string[];
+    descriptions: string[];
+    [key: string]: string[];
+  },
+  cuisinePreferences: string[],
   availableIngredients: Ingredient[],
   dietaryRestrictions: string[]
-): GeneratedMenuItem[] {
-  const result: GeneratedMenuItem[] = [];
+) {
+  const availableIngredientNames = availableIngredients.map(ing => ing.name);
   
-  // Base de plats pour chaque catégorie
-  const starterOptions = [
-    {
-      name: 'Velouté de potimarron',
-      description: 'Un velouté onctueux parfait pour les jours de pluie, avec des notes de cannelle et muscade.',
-      ingredients: ['Potimarron', 'Oignon', 'Crème', 'Cannelle', 'Muscade'],
-      allergens: ['lait'],
-      price: 9,
-      isWarm: true,
-      isCold: false,
-    },
-    {
-      name: 'Tarte fine aux champignons',
-      description: 'Tarte croustillante garnie de champignons de saison et d\'herbes fraîches.',
-      ingredients: ['Pâte feuilletée', 'Champignons', 'Échalotes', 'Thym', 'Crème fraîche'],
-      allergens: ['gluten', 'lait'],
-      price: 11,
-      isWarm: true,
-      isCold: false,
-    },
-    {
-      name: 'Carpaccio de betteraves',
-      description: 'Fines tranches de betteraves marinées au vinaigre balsamique et huile d\'olive.',
-      ingredients: ['Betterave', 'Vinaigre balsamique', 'Huile d\'olive', 'Ciboulette', 'Échalote'],
-      allergens: [],
-      price: 8,
-      isWarm: false,
-      isCold: true,
-    },
-    {
-      name: 'Gaspacho de tomates',
-      description: 'Soupe froide rafraîchissante à base de tomates, concombre et poivron.',
-      ingredients: ['Tomate', 'Concombre', 'Poivron', 'Ail', 'Huile d\'olive'],
-      allergens: [],
-      price: 7,
-      isWarm: false,
-      isCold: true,
-    },
-    {
-      name: 'Salade de chèvre chaud',
-      description: 'Salade verte avec toasts de chèvre chaud au miel et noix.',
-      ingredients: ['Salade', 'Fromage de chèvre', 'Miel', 'Noix', 'Toasts'],
-      allergens: ['gluten', 'lait', 'fruits à coque'],
-      price: 10,
-      isWarm: true,
-      isCold: true,
-    },
-  ];
-  
-  const mainOptions = [
-    {
-      name: 'Risotto aux champignons',
-      description: 'Risotto crémeux aux champignons, parfait pour une journée pluvieuse d\'automne.',
-      ingredients: ['Riz arborio', 'Champignons', 'Parmesan', 'Oignon', 'Vin blanc'],
-      allergens: ['lait'],
-      price: 18,
-      isWarm: true,
-      isCold: false,
-    },
-    {
-      name: 'Pot-au-feu traditionnel',
-      description: 'Un plat mijoté réconfortant avec des légumes de saison, idéal par temps frais et pluvieux.',
-      ingredients: ['Bœuf', 'Carottes', 'Poireaux', 'Navets', 'Pommes de terre'],
-      allergens: [],
-      price: 22,
-      isWarm: true,
-      isCold: false,
-    },
-    {
-      name: 'Filet de dorade grillé',
-      description: 'Filet de dorade grillé accompagné de légumes de saison et sauce vierge.',
-      ingredients: ['Dorade', 'Tomates', 'Courgettes', 'Huile d\'olive', 'Citron'],
-      allergens: ['poisson'],
-      price: 24,
-      isWarm: true,
-      isCold: false,
-    },
-    {
-      name: 'Salade niçoise',
-      description: 'Salade fraîche avec thon, œufs, olives et légumes croquants.',
-      ingredients: ['Thon', 'Œufs', 'Tomates', 'Olives', 'Haricots verts'],
-      allergens: ['poisson', 'œuf'],
-      price: 16,
-      isWarm: false,
-      isCold: true,
-    },
-    {
-      name: 'Tajine d\'agneau aux abricots',
-      description: 'Tajine d\'agneau parfumé aux épices, avec abricots secs et amandes.',
-      ingredients: ['Agneau', 'Abricots secs', 'Amandes', 'Cannelle', 'Miel'],
-      allergens: ['fruits à coque'],
-      price: 21,
-      isWarm: true,
-      isCold: false,
-    },
-  ];
-  
-  const dessertOptions = [
-    {
-      name: 'Tarte aux pommes tiède',
-      description: 'Tarte aux pommes servie tiède avec une boule de glace à la vanille.',
-      ingredients: ['Pommes', 'Pâte brisée', 'Cannelle', 'Vanille', 'Sucre'],
-      allergens: ['gluten', 'lait', 'œuf'],
-      price: 8,
-      isWarm: true,
-      isCold: false,
-    },
-    {
-      name: 'Mousse au chocolat',
-      description: 'Mousse au chocolat légère et aérienne, parfaite en toute saison.',
-      ingredients: ['Chocolat noir', 'Œufs', 'Sucre', 'Crème'],
-      allergens: ['œuf', 'lait'],
-      price: 7,
-      isWarm: false,
-      isCold: true,
-    },
-    {
-      name: 'Salade de fruits frais',
-      description: 'Salade de fruits frais de saison, rafraîchissante et légère.',
-      ingredients: ['Fruits de saison', 'Jus de citron', 'Menthe', 'Sucre'],
-      allergens: [],
-      price: 6,
-      isWarm: false,
-      isCold: true,
-    },
-    {
-      name: 'Crème brûlée à la vanille',
-      description: 'Crème onctueuse à la vanille avec une fine couche de caramel craquant.',
-      ingredients: ['Crème', 'Œufs', 'Vanille', 'Sucre'],
-      allergens: ['lait', 'œuf'],
-      price: 8,
-      isWarm: false,
-      isCold: true,
-    },
-    {
-      name: 'Fondant au chocolat',
-      description: 'Gâteau au chocolat au cœur coulant, servi chaud avec une boule de glace.',
-      ingredients: ['Chocolat', 'Beurre', 'Œufs', 'Farine', 'Sucre'],
-      allergens: ['gluten', 'lait', 'œuf'],
-      price: 9,
-      isWarm: true,
-      isCold: false,
-    },
-  ];
-  
-  // Sélectionner les plats selon les conditions météo
-  const options = category === 'starter' ? starterOptions : 
-                 category === 'main' ? mainOptions : dessertOptions;
-  
-  // Filtrer les plats qui correspondent aux conditions météo
-  // Par exemple, privilégier les plats chauds quand il fait froid et vice versa
-  const isWeatherCold = ['cold', 'rainy', 'snowy', 'windy', 'foggy'].includes(suggestions.condition);
-  const isWeatherHot = ['hot', 'clear'].includes(suggestions.condition);
-  
-  // Filtrer les options selon la météo
-  let filteredOptions = options;
-  if (isWeatherCold) {
-    filteredOptions = options.filter(o => o.isWarm);
-  } else if (isWeatherHot) {
-    filteredOptions = options.filter(o => o.isCold);
-  }
-  
-  // Si on n'a pas assez d'options après filtrage, revenir aux options complètes
-  if (filteredOptions.length < count) {
-    filteredOptions = options;
-  }
-  
-  // Mélanger le tableau pour avoir des résultats différents à chaque fois
-  const shuffled = [...filteredOptions].sort(() => 0.5 - Math.random());
-  
-  // Sélectionner les plats
-  for (let i = 0; i < count && i < shuffled.length; i++) {
-    const dish = shuffled[i];
+  return Array(count).fill(null).map(() => {
+    const ingredients = getRandomItems(suggestions.ingredients || [], 3);
     
-    result.push({
-      id: `${category}-${i + 1}`,
-      name: dish.name,
-      description: dish.description,
-      price: dish.price,
-      ingredients: dish.ingredients.map((name: string) => ({
-        id: `ing-${name.toLowerCase().replace(/\s+/g, '-')}`,
-        name,
-        category: 'other',
-        isAvailable: true,
-        dietaryRestrictions: JSON.stringify([]),
-        restaurantId: '',
-        createdAt: new Date(),
-        updatedAt: new Date()
-      })),
-      allergens: dish.allergens,
-      dietaryRestrictions: [],
-      category: category,
-      isAvailable: true,
-      isPopular: false,
-      isNew: false,
-      order: i,
-      aiGenerated: true,
-      imageUrl: undefined,
-      thumbnailUrl: undefined,
-      calories: undefined,
-      recommendedPairings: undefined,
-      options: undefined
-    });
-  }
-  
-  return result;
+    return {
+      name: `${getRandomItem(suggestions.suitable || ["Délicieux plat"])}`,
+      description: `Un plat ${getRandomItem(suggestions.descriptions || ["savoureux"])} préparé avec soin, idéal pour cette météo.`,
+      ingredients: ingredients
+    };
+  });
+}
+
+// Fonctions utilitaires pour le fallback
+function getRandomItem<T>(array: T[]): T {
+  return array[Math.floor(Math.random() * array.length)];
+}
+
+function getRandomItems<T>(array: T[], count: number): T[] {
+  const shuffled = [...array].sort(() => 0.5 - Math.random());
+  return shuffled.slice(0, count);
 } 

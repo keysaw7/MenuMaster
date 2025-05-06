@@ -13,11 +13,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Base Structure Models
 model Restaurant {
   id          String   @id @default(uuid())
   name        String
   description String
-  cuisine     Json
+  cuisine     Json     // Array of cuisine types
   address     Json
   contact     Json
   hours       Json
@@ -27,12 +28,77 @@ model Restaurant {
   updatedAt   DateTime @updatedAt
 
   // Relations
-  menus      Menu[]
-  dailyMenus DailyMenu[]
-  users      UsersOnRestaurants[]
-  ingredients IngredientInventory[]
+  menus           Menu[]
+  dailyMenus      DailyMenu[]
+  users           UsersOnRestaurants[]
+  ingredients     IngredientInventory[]
+  customTemplates CustomTemplate[]   // NEW: For storing custom templates
+  media           MediaAsset[]       // NEW: For storing media assets 
+  themes          Theme[]            // NEW: For storing custom themes
 }
 
+// NEW: Model for storing custom themes
+model Theme {
+  id            String    @id @default(uuid())
+  restaurantId  String
+  name          String
+  isActive      Boolean   @default(false)
+  colors        Json      // Primary, secondary, accent colors
+  typography    Json      // Font families, sizes, weights
+  components    Json      // Button styles, card styles, etc.
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  restaurant    Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId])
+}
+
+// NEW: Media asset management
+model MediaAsset {
+  id            String    @id @default(uuid())
+  restaurantId  String
+  type          String    // "image", "logo", "icon", etc.
+  category      String    // "food", "drink", "ambiance", "staff", etc.
+  originalUrl   String    // Original uploaded file
+  thumbnailUrl  String?   // Thumbnail version
+  mediumUrl     String?   // Medium-sized version
+  largeUrl      String?   // Large-sized version
+  alt           String?   // Alt text for accessibility
+  mimeType      String    // MIME type
+  size          Int       // File size in bytes
+  dimensions    Json?     // Width and height
+  tags          Json?     // Array of tags
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  restaurant    Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId])
+  @@index([type, category])
+}
+
+// NEW: Custom templates model
+model CustomTemplate {
+  id            String    @id @default(uuid())
+  restaurantId  String
+  name          String
+  type          String    // "menu", "dailyMenu", "qrCode", etc.
+  content       Json      // Template content structure
+  isActive      Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  restaurant    Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId])
+  @@index([type])
+}
+
+// Content Models
 model Menu {
   id           String    @id @default(uuid())
   restaurantId String
@@ -42,6 +108,8 @@ model Menu {
   isActive     Boolean   @default(true)
   availability Json
   categories   Json
+  themeId      String?   // NEW: reference to a theme
+  template     String?   // NEW: template identifier or reference
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -61,6 +129,8 @@ model DailyMenu {
   desserts     Json
   price        Float?
   isPublished  Boolean  @default(false)
+  themeId      String?  // NEW: reference to a theme
+  template     String?  // NEW: template identifier or reference
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -70,6 +140,7 @@ model DailyMenu {
   @@index([restaurantId, date])
 }
 
+// Ingredient Management 
 model Ingredient {
   id                  String   @id @default(uuid())
   name                String
@@ -81,7 +152,7 @@ model Ingredient {
   properties          Json?
   nutritionalInfo     Json?
   temperature         String?
-  imageUrl            String?
+  imageUrl            String?  // Consider migrating to MediaAsset model
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
@@ -111,6 +182,7 @@ model IngredientInventory {
   @@index([ingredientId])
 }
 
+// User Management
 model User {
   id           String   @id @default(uuid())
   email        String   @unique

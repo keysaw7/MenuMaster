@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { setAuthData } from '@/app/lib/auth-client';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -16,6 +17,7 @@ export default function RegisterPage() {
     acceptTerms: false
   });
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -31,6 +33,7 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSuccess(null);
     
     // Validation plus détaillée
     // Email
@@ -112,8 +115,28 @@ export default function RegisterPage() {
       const data = await response.json();
       console.log('Inscription réussie:', data);
       
-      // Redirection vers le tableau de bord après inscription réussie
-      router.push('/dashboard');
+      // Stocker le token dans localStorage comme solution de secours
+      if (data.token) {
+        try {
+          setAuthData(data.token, data.user);
+          console.log('Données d\'authentification stockées localement');
+          
+          // Afficher le message de succès avant la redirection
+          setSuccess('Inscription réussie ! Vous allez être redirigé vers votre tableau de bord...');
+          
+          // Redirection vers le tableau de bord après un délai de 2 secondes
+          setTimeout(() => {
+            router.push('/dashboard');
+          }, 2000);
+          
+        } catch (storageError) {
+          console.warn('Impossible de stocker les données dans localStorage:', storageError);
+          router.push('/dashboard');
+        }
+      } else {
+        router.push('/dashboard');
+      }
+      
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);
@@ -155,6 +178,21 @@ export default function RegisterPage() {
                 </div>
                 <div className="ml-3">
                   <p className="text-sm text-red-700">{error}</p>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {success && (
+            <div className="bg-green-50 border-l-4 border-green-400 p-4 mb-6">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-green-700">{success}</p>
                 </div>
               </div>
             </div>

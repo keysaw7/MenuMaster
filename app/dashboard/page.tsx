@@ -30,8 +30,11 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
+        console.log("Récupération des données utilisateur");
         const response = await fetch('/api/auth/me');
+        
         if (!response.ok) {
+          console.error("Réponse non OK:", response.status, response.statusText);
           if (response.status === 401) {
             // Non authentifié, rediriger vers la page de connexion
             router.push('/login');
@@ -41,12 +44,37 @@ export default function Dashboard() {
         }
         
         const data = await response.json();
-        setUser(data.user);
-        setRestaurants(data.restaurants);
+        console.log("Données reçues:", JSON.stringify(data).substring(0, 200) + "...");
         
-        // Sélectionner automatiquement le premier restaurant s'il y en a un
-        if (data.restaurants && data.restaurants.length > 0) {
-          setSelectedRestaurant(data.restaurants[0].id);
+        if (!data.user) {
+          console.error("Pas d'utilisateur dans les données");
+          throw new Error('Données utilisateur invalides');
+        }
+        
+        setUser(data.user);
+        
+        // Traitement des restaurants
+        if (Array.isArray(data.restaurants)) {
+          console.log(`${data.restaurants.length} restaurants reçus`);
+          
+          // S'assurer que tous les restaurants ont le bon format
+          const formattedRestaurants = data.restaurants.map((restaurant: any) => ({
+            id: restaurant.id || '',
+            name: restaurant.name || '',
+            description: restaurant.description || '',
+            cuisine: Array.isArray(restaurant.cuisine) ? restaurant.cuisine : [],
+            role: restaurant.role || 'USER'
+          }));
+          
+          setRestaurants(formattedRestaurants);
+          
+          // Sélectionner automatiquement le premier restaurant s'il y en a un
+          if (formattedRestaurants.length > 0) {
+            setSelectedRestaurant(formattedRestaurants[0].id);
+          }
+        } else {
+          console.error("Format de restaurants invalide:", data.restaurants);
+          setRestaurants([]);
         }
       } catch (err) {
         console.error('Erreur:', err);

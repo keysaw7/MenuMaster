@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
-import { verifyPassword, generateToken, setAuthCookie } from '@/app/lib/auth';
+import { verifyPassword, generateToken } from '@/app/lib/auth';
 
 const prisma = new PrismaClient();
 
@@ -79,16 +79,8 @@ export async function POST(request: NextRequest) {
     
     console.log('Token JWT généré avec succès');
 
-    // Définir le cookie d'authentification
-    try {
-      setAuthCookie(token);
-      console.log('Cookie d\'authentification défini avec succès');
-    } catch (cookieError) {
-      console.error('Erreur lors de la définition du cookie:', cookieError);
-    }
-
-    // Créer la réponse
-    const response = NextResponse.json({
+    // Créer la réponse avec token et utilisateur
+    const responseData = {
       message: 'Connexion réussie',
       user: {
         id: user.id,
@@ -97,14 +89,28 @@ export async function POST(request: NextRequest) {
         role: user.role,
       },
       restaurants: userRestaurants.map((ur: UserRestaurant) => ur.restaurant),
-      token: token // Inclure le token pour le débogage
-    });
+      token: token // Inclure le token pour le débogage et l'utilisation côté client
+    };
+
+    // Créer la réponse
+    const response = NextResponse.json(responseData);
     
-    // Définir manuellement le cookie dans la réponse pour plus de sécurité
+    // Définir le cookie d'authentification dans la réponse
     response.cookies.set({
       name: 'auth-token',
       value: token,
       httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 60 * 60 * 24 * 7, // 7 jours
+      path: '/',
+      sameSite: 'strict',
+    });
+    
+    // Ajouter un cookie lisible côté client pour vérifier l'état de connexion
+    response.cookies.set({
+      name: 'auth-status',
+      value: 'logged-in',
+      httpOnly: false, // Accessible en JavaScript
       secure: process.env.NODE_ENV === 'production',
       maxAge: 60 * 60 * 24 * 7, // 7 jours
       path: '/',
