@@ -12,6 +12,64 @@ export async function GET(request: Request, { params }: RouteParams) {
   try {
     const id = await params.id;
 
+    // Cas spécial pour le restaurant démo
+    if (id === '1') {
+      return NextResponse.json({
+        id: '1',
+        name: 'Chez Minnà/Démo',
+        description: 'Restaurant de démonstration avec toutes les fonctionnalités disponibles',
+        cuisine: ['Corse', 'Méditerranéenne'],
+        address: {
+          street: '15 Rue de la Citadelle',
+          city: 'Bonifacio',
+          postalCode: '20169',
+          country: 'France',
+          coordinates: {
+            latitude: 41.387397,
+            longitude: 9.159784
+          }
+        },
+        contact: {
+          phone: '+33 4 95 73 04 58',
+          email: 'contact@chezminnademo.fr',
+          website: 'https://www.chezminnademo.fr'
+        },
+        hours: {
+          "1": [{ open: "12:00", close: "14:30" }, { open: "19:00", close: "22:30" }],
+          "2": [{ open: "12:00", close: "14:30" }, { open: "19:00", close: "22:30" }],
+          "3": [{ open: "12:00", close: "14:30" }, { open: "19:00", close: "22:30" }],
+          "4": [{ open: "12:00", close: "14:30" }, { open: "19:00", close: "22:30" }],
+          "5": [{ open: "12:00", close: "14:30" }, { open: "19:00", close: "23:00" }],
+          "6": [{ open: "12:00", close: "15:00" }, { open: "19:00", close: "23:00" }],
+          "0": [{ open: "12:00", close: "15:00" }]
+        },
+        settings: {
+          primaryColor: '#4f46e5',
+          secondaryColor: '#ffffff',
+          fontFamily: 'Inter',
+          logo: '/images/placeholder-logo.png',
+          coverImage: '/images/placeholder-restaurant.jpg',
+          currency: '€'
+        },
+        features: {
+          hasAlcohol: true,
+          acceptsReservations: true,
+          hasTakeout: false,
+          hasDelivery: false,
+          isDailyMenuEnabled: true,
+          isAiRecommendationEnabled: true
+        },
+        menus: [
+          {
+            id: 'demo-menu',
+            name: 'Carte Chez Minnà/Démo',
+            type: 'regular'
+          }
+        ],
+        dailyMenus: []
+      });
+    }
+
     const restaurant = await prisma.restaurant.findUnique({
       where: { id },
       include: {

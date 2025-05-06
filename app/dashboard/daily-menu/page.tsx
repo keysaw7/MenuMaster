@@ -123,6 +123,19 @@ export default function DailyMenuPage() {
   const [menus, setMenus] = useState<DailyMenu[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedRestaurant, setSelectedRestaurant] = useState<string | null>(null);
+
+  // Récupérer le paramètre restaurant de l'URL
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      const restaurantParam = searchParams.get('restaurant');
+      if (restaurantParam) {
+        console.log('Restaurant ID depuis URL:', restaurantParam);
+        setSelectedRestaurant(restaurantParam);
+      }
+    }
+  }, []);
 
   // Fonction pour charger les menus depuis l'API
   const loadMenus = async () => {
@@ -130,7 +143,15 @@ export default function DailyMenuPage() {
       setLoading(true);
       const menus = await fetchDailyMenus();
       console.log('Menus chargés dans le composant:', menus);
-      setMenus(menus);
+      
+      // Filtrer les menus par restaurant si un ID de restaurant est spécifié
+      if (selectedRestaurant) {
+        const filteredMenus = menus.filter(menu => menu.restaurantId === selectedRestaurant);
+        console.log(`Filtrage des menus pour le restaurant ${selectedRestaurant}:`, filteredMenus);
+        setMenus(filteredMenus);
+      } else {
+        setMenus(menus);
+      }
     } catch (error) {
       console.error('Erreur lors du chargement des menus:', error);
     } finally {
@@ -146,7 +167,7 @@ export default function DailyMenuPage() {
 
   useEffect(() => {
     loadMenus();
-  }, []);
+  }, [selectedRestaurant]);
 
   const handlePublish = async (menuId: string) => {
     try {

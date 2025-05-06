@@ -66,6 +66,19 @@ export default function Dashboard() {
             role: restaurant.role || 'USER'
           }));
           
+          // Ajouter le restaurant démo Chez Minnà/Démo s'il n'est pas déjà présent
+          const demoRestaurantExists = formattedRestaurants.some((r: Restaurant) => r.id === '1');
+          
+          if (!demoRestaurantExists) {
+            formattedRestaurants.unshift({
+              id: '1',
+              name: 'Chez Minnà/Démo',
+              description: 'Restaurant de démonstration avec toutes les fonctionnalités disponibles',
+              cuisine: ['Corse', 'Méditerranéenne'],
+              role: 'VIEWER'
+            });
+          }
+          
           setRestaurants(formattedRestaurants);
           
           // Sélectionner automatiquement le premier restaurant s'il y en a un
@@ -74,11 +87,30 @@ export default function Dashboard() {
           }
         } else {
           console.error("Format de restaurants invalide:", data.restaurants);
-          setRestaurants([]);
+          // Ajouter au moins le restaurant démo même si pas de restaurants
+          const demoRestaurant = [{
+            id: '1',
+            name: 'Chez Minnà/Démo',
+            description: 'Restaurant de démonstration avec toutes les fonctionnalités disponibles',
+            cuisine: ['Corse', 'Méditerranéenne'],
+            role: 'VIEWER'
+          }];
+          setRestaurants(demoRestaurant);
+          setSelectedRestaurant('1');
         }
       } catch (err) {
         console.error('Erreur:', err);
         setError('Impossible de charger les données utilisateur');
+        // En cas d'erreur, afficher quand même le restaurant démo
+        const demoRestaurant = [{
+          id: '1',
+          name: 'Chez Minnà/Démo',
+          description: 'Restaurant de démonstration avec toutes les fonctionnalités disponibles',
+          cuisine: ['Corse', 'Méditerranéenne'],
+          role: 'VIEWER'
+        }];
+        setRestaurants(demoRestaurant);
+        setSelectedRestaurant('1');
       } finally {
         setLoading(false);
       }
@@ -215,7 +247,7 @@ export default function Dashboard() {
           </div>
           <div className="bg-gray-50 px-6 py-4">
             <Link
-              href="/daily-menu/new"
+              href={selectedRestaurant ? `/daily-menu/new?restaurant=${selectedRestaurant}` : "/daily-menu/new"}
               className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none"
             >
               Créer
@@ -328,7 +360,7 @@ export default function Dashboard() {
           </div>
           <div className="bg-gray-50 px-6 py-4">
             <Link
-              href="/dashboard/daily-menu"
+              href={selectedRestaurant ? `/dashboard/daily-menu?restaurant=${selectedRestaurant}` : "/dashboard/daily-menu"}
               className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none"
             >
               Voir les menus

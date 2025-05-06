@@ -479,7 +479,7 @@ export default function MenuPage() {
             
             <div className="mb-6">
               <textarea
-                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-black"
                 rows={4}
                 placeholder="Exemple : Je cherche un plat végétarien ou quels sont vos plats signature ?"
                 value={assistantPrompt}

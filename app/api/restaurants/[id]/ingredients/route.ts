@@ -39,6 +39,36 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
     
+    // Cas spécial pour le restaurant démo (ID: 1)
+    if (restaurantId === '1') {
+      // Retourner une liste d'ingrédients pour le restaurant de démonstration
+      const demoIngredients = [
+        { id: 'demo-1', name: 'Figatellu', category: 'charcuterie', isInStock: true, quantity: 5, unit: 'kg', allergen: false, restaurantId: '1' },
+        { id: 'demo-2', name: 'Prisuttu', category: 'charcuterie', isInStock: true, quantity: 3, unit: 'kg', allergen: false, restaurantId: '1' },
+        { id: 'demo-3', name: 'Lonzu', category: 'charcuterie', isInStock: true, quantity: 4, unit: 'kg', allergen: false, restaurantId: '1' },
+        { id: 'demo-4', name: 'Coppa', category: 'charcuterie', isInStock: true, quantity: 4, unit: 'kg', allergen: false, restaurantId: '1' },
+        { id: 'demo-5', name: 'Brocciu', category: 'fromage', isInStock: true, quantity: 6, unit: 'kg', allergen: true, dietary: { allergenType: 'lait' }, restaurantId: '1' },
+        { id: 'demo-6', name: 'Tomme corse', category: 'fromage', isInStock: true, quantity: 8, unit: 'kg', allergen: true, dietary: { allergenType: 'lait' }, restaurantId: '1' },
+        { id: 'demo-7', name: 'Fromage frais', category: 'fromage', isInStock: true, quantity: 5, unit: 'kg', allergen: true, dietary: { allergenType: 'lait' }, restaurantId: '1' },
+        { id: 'demo-8', name: 'Miel', category: 'épicerie', isInStock: true, quantity: 10, unit: 'kg', allergen: false, restaurantId: '1' },
+        { id: 'demo-9', name: 'Châtaignes', category: 'épicerie', isInStock: true, quantity: 15, unit: 'kg', allergen: true, dietary: { allergenType: 'fruits à coque' }, restaurantId: '1' },
+        { id: 'demo-10', name: 'Canistrelli', category: 'boulangerie', isInStock: true, quantity: 20, unit: 'pièces', allergen: true, dietary: { allergenType: 'gluten' }, restaurantId: '1' },
+        { id: 'demo-11', name: 'Herbes du maquis', category: 'herbes', isInStock: true, quantity: 2, unit: 'kg', allergen: false, restaurantId: '1' },
+        { id: 'demo-12', name: 'Nepita', category: 'herbes', isInStock: true, quantity: 1, unit: 'kg', allergen: false, restaurantId: '1' },
+        { id: 'demo-13', name: 'Huile d\'olive', category: 'huiles', isInStock: true, quantity: 25, unit: 'L', allergen: false, restaurantId: '1' },
+        { id: 'demo-14', name: 'Vermentinu', category: 'boissons', isInStock: true, quantity: 36, unit: 'bouteilles', allergen: false, restaurantId: '1' },
+        { id: 'demo-15', name: 'Agrumes corses', category: 'fruits', isInStock: true, quantity: 30, unit: 'kg', allergen: false, restaurantId: '1' },
+        { id: 'demo-16', name: 'Olives corses', category: 'épicerie', isInStock: true, quantity: 12, unit: 'kg', allergen: false, restaurantId: '1' },
+        { id: 'demo-17', name: 'Nuciola', category: 'épicerie', isInStock: true, quantity: 5, unit: 'kg', allergen: true, dietary: { allergenType: 'fruits à coque' }, restaurantId: '1' },
+        { id: 'demo-18', name: 'Marjolaine', category: 'herbes', isInStock: true, quantity: 1, unit: 'kg', allergen: false, restaurantId: '1' },
+        { id: 'demo-19', name: 'Polenta', category: 'céréales', isInStock: true, quantity: 20, unit: 'kg', allergen: false, restaurantId: '1' },
+        { id: 'demo-20', name: 'Pistache', category: 'fruits à coque', isInStock: true, quantity: 8, unit: 'kg', allergen: true, dietary: { allergenType: 'fruits à coque' }, restaurantId: '1' },
+      ];
+      
+      return NextResponse.json({ ingredients: demoIngredients });
+    }
+    
+    // Pour les autres restaurants, continuer avec le code existant
     // Vérifier l'authentification de l'utilisateur
     const user = await getUserFromToken(request);
     
@@ -115,6 +145,16 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
     
+    // Cas spécial pour le restaurant démo (ID: 1)
+    if (restaurantId === '1') {
+      // Pour le restaurant démo, simuler une réussite
+      return NextResponse.json({
+        message: "Les ingrédients ont déjà été configurés pour le restaurant de démonstration",
+        success: true
+      });
+    }
+    
+    // Pour les autres restaurants, continuer avec le code existant
     // Vérifier l'authentification de l'utilisateur
     const user = await getUserFromToken(request);
     

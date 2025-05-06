@@ -112,11 +112,26 @@ export default function NewDailyMenuPage() {
   const [city, setCity] = useState<string>('Paris,fr');
   const [showMenu, setShowMenu] = useState(false);
 
+  // Récupérer le paramètre restaurant de l'URL
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const restaurantParam = searchParams.get('restaurant');
+    if (restaurantParam) {
+      console.log('Restaurant ID depuis URL:', restaurantParam);
+      // Ce paramètre sera utilisé pour sélectionner le restaurant après chargement
+      setSelectedRestaurant(restaurantParam);
+    }
+  }, []);
+
   // Charger les restaurants de l'utilisateur
   useEffect(() => {
     const fetchRestaurants = async () => {
       setLoading(true);
       try {
+        // Récupérer le paramètre restaurant de l'URL
+        const searchParams = new URLSearchParams(window.location.search);
+        const restaurantParam = searchParams.get('restaurant');
+        
         // Appel à l'API pour récupérer les restaurants de l'utilisateur
         const response = await fetch('/api/restaurants');
         
@@ -137,15 +152,30 @@ export default function NewDailyMenuPage() {
           }));
           
           setRestaurants(restaurantsWithData);
-          // Sélectionner le premier restaurant par défaut
-          setSelectedRestaurant(restaurantsWithData[0].id);
           
-          // Initialiser la ville avec celle du premier restaurant si disponible
-          if (restaurantsWithData[0]?.address?.city) {
-            const country = restaurantsWithData[0].address.country || 'fr';
-            const formattedCity = `${restaurantsWithData[0].address.city},${country.substring(0, 2).toLowerCase()}`;
-            setCity(formattedCity);
-            console.log(`Ville initialisée avec celle du premier restaurant: ${formattedCity}`);
+          // Sélectionner le restaurant spécifié dans l'URL ou le premier par défaut
+          if (restaurantParam && restaurantsWithData.some((r: Restaurant) => r.id === restaurantParam)) {
+            setSelectedRestaurant(restaurantParam);
+            
+            // Initialiser la ville avec celle du restaurant sélectionné si disponible
+            const selectedRest = restaurantsWithData.find((r: Restaurant) => r.id === restaurantParam);
+            if (selectedRest?.address?.city) {
+              const country = selectedRest.address.country || 'fr';
+              const formattedCity = `${selectedRest.address.city},${country.substring(0, 2).toLowerCase()}`;
+              setCity(formattedCity);
+              console.log(`Ville initialisée avec celle du restaurant sélectionné: ${formattedCity}`);
+            }
+          } else {
+            // Sélectionner le premier restaurant par défaut
+            setSelectedRestaurant(restaurantsWithData[0].id);
+            
+            // Initialiser la ville avec celle du premier restaurant si disponible
+            if (restaurantsWithData[0]?.address?.city) {
+              const country = restaurantsWithData[0].address.country || 'fr';
+              const formattedCity = `${restaurantsWithData[0].address.city},${country.substring(0, 2).toLowerCase()}`;
+              setCity(formattedCity);
+              console.log(`Ville initialisée avec celle du premier restaurant: ${formattedCity}`);
+            }
           }
         } else {
           // Aucun restaurant trouvé

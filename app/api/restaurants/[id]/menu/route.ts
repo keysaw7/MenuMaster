@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { getUserFromToken } from '@/app/lib/auth';
-import { menu as corsicaMenu } from '@/app/data/menu';
+import { menu as demoMenu } from '@/app/data/menu';
 
 const prisma = new PrismaClient();
 
@@ -12,7 +12,7 @@ export async function GET(
 ) {
   try {
     // Récupérer l'ID du restaurant
-    const restaurantId = params.id;
+    const restaurantId = await params.id;
     
     if (!restaurantId) {
       return NextResponse.json(
@@ -21,7 +21,17 @@ export async function GET(
       );
     }
     
-    // Récupérer les menus du restaurant
+    // Vérifier si c'est le restaurant démo et retourner directement les données du menu démo
+    if (restaurantId === '1') {
+      const demoRestaurantData = {
+        id: '1',
+        name: 'Chez Minnà/Démo',
+        menu: demoMenu
+      };
+      return NextResponse.json(demoRestaurantData);
+    }
+    
+    // Pour les autres restaurants, récupérer les menus de la base de données
     const menus = await prisma.menu.findMany({
       where: {
         restaurantId,
@@ -57,7 +67,7 @@ export async function POST(
 ) {
   try {
     // Récupérer l'ID du restaurant
-    const restaurantId = params.id;
+    const restaurantId = await params.id;
     
     if (!restaurantId) {
       return NextResponse.json(
@@ -66,6 +76,67 @@ export async function POST(
       );
     }
     
+    // Cas spécial pour le restaurant démo
+    if (restaurantId === '1') {
+      // Pour le restaurant démo, retourner directement les données du menu démo
+      const categorizedMenu: { [key: string]: any[] } = {};
+      
+      demoMenu.forEach(dish => {
+        if (!categorizedMenu[dish.category]) {
+          categorizedMenu[dish.category] = [];
+        }
+        categorizedMenu[dish.category].push(dish);
+      });
+      
+      // Formater les données pour correspondre à notre schéma
+      const categories = Object.keys(categorizedMenu).map((category, idx) => {
+        return {
+          id: `cat-${idx}`,
+          name: category === 'entrée' ? 'Entrées' : 
+                category === 'plat' ? 'Plats' : 
+                category === 'dessert' ? 'Desserts' : category,
+          description: `Nos ${category === 'entrée' ? 'entrées' : 
+                        category === 'plat' ? 'plats' : 
+                        category === 'dessert' ? 'desserts' : category} de démonstration`,
+          order: idx,
+          items: categorizedMenu[category].map((dish, itemIdx) => ({
+            id: dish.id || `item-${idx}-${itemIdx}`,
+            name: dish.name,
+            description: dish.description,
+            price: dish.price,
+            ingredients: dish.ingredients,
+            allergens: dish.allergens,
+            dietaryRestrictions: dish.dietaryRestrictions,
+            imageUrl: dish.imageUrl,
+            order: itemIdx,
+            isAvailable: true,
+            recommendedPairings: dish.recommendedPairings || []
+          }))
+        };
+      });
+      
+      const demoMenuData = {
+        id: 'demo-menu',
+        restaurantId: '1',
+        name: "Carte Chez Minnà/Démo",
+        description: "Notre sélection de plats de démonstration",
+        type: "regular",
+        isActive: true,
+        availability: {
+          daysOfWeek: [0, 1, 2, 3, 4, 5, 6], // Tous les jours
+          timeStart: "12:00",
+          timeEnd: "22:00"
+        },
+        categories
+      };
+      
+      return NextResponse.json({
+        success: true,
+        menu: demoMenuData
+      });
+    }
+    
+    // Pour les autres restaurants, procéder normalement
     // Vérifier l'authentification
     const user = await getUserFromToken(request);
     
@@ -114,7 +185,7 @@ export async function POST(
       }
     });
     
-    // Récupérer les données du corps de la requête ou utiliser des données par défaut
+    // Récupérer les données du corps de la requête
     let menuData;
     
     try {
@@ -122,68 +193,10 @@ export async function POST(
       const body = await request.json();
       menuData = body;
     } catch (e) {
-      // Pas de données fournies, vérifier si c'est "Chez Minnà"
-      console.log("Pas de données de menu fournies dans la requête");
-      
-      if (restaurant.name.toLowerCase().includes('minnà') || restaurant.name.toLowerCase().includes('minna')) {
-        // Utiliser le menu corse prédéfini pour Chez Minnà
-        console.log("Utilisation du menu corse pour Chez Minnà");
-        
-        // Réorganiser le menu par catégories
-        const categorizedMenu: { [key: string]: any[] } = {};
-        
-        corsicaMenu.forEach(dish => {
-          if (!categorizedMenu[dish.category]) {
-            categorizedMenu[dish.category] = [];
-          }
-          categorizedMenu[dish.category].push(dish);
-        });
-        
-        // Formater les données pour correspondre à notre schéma
-        const categories = Object.keys(categorizedMenu).map((category, idx) => {
-          return {
-            id: `cat-${idx}`,
-            name: category === 'entrée' ? 'Entrées' : 
-                  category === 'plat' ? 'Plats' : 
-                  category === 'dessert' ? 'Desserts' : category,
-            description: `Nos ${category === 'entrée' ? 'entrées' : 
-                          category === 'plat' ? 'plats' : 
-                          category === 'dessert' ? 'desserts' : category} corses`,
-            order: idx,
-            items: categorizedMenu[category].map((dish, itemIdx) => ({
-              id: dish.id || `item-${idx}-${itemIdx}`,
-              name: dish.name,
-              description: dish.description,
-              price: dish.price,
-              ingredients: dish.ingredients,
-              allergens: dish.allergens,
-              dietaryRestrictions: dish.dietaryRestrictions,
-              imageUrl: dish.imageUrl,
-              order: itemIdx,
-              isAvailable: true,
-              recommendedPairings: dish.recommendedPairings || []
-            }))
-          };
-        });
-        
-        menuData = {
-          name: "Carte de Chez Minnà",
-          description: "Notre sélection de plats traditionnels corses",
-          type: "regular",
-          availability: {
-            daysOfWeek: [0, 1, 2, 3, 4, 5, 6], // Tous les jours
-            timeStart: "12:00",
-            timeEnd: "22:00"
-          },
-          categories
-        };
-      } else {
-        // Pour les autres restaurants, on ne crée pas de menu par défaut
-        return NextResponse.json(
-          { error: "Aucune donnée de menu fournie" },
-          { status: 400 }
-        );
-      }
+      return NextResponse.json(
+        { error: "Aucune donnée de menu fournie" },
+        { status: 400 }
+      );
     }
     
     // Créer ou mettre à jour le menu

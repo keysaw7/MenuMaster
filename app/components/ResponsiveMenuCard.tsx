@@ -108,7 +108,7 @@ export default function ResponsiveMenuCard({
           </div>
           
           <Link 
-            href={`/dashboard/restaurants/${restaurantId}/menu/${id}/edit`}
+            href={`/menu`}
             className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200 focus:outline-none"
           >
             Modifier

@@ -1,47 +1,50 @@
 import { NextResponse } from 'next/server';
+import OpenAI from 'openai';
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { prompt } = body;
+    const { prompt, restaurantId } = body;
 
-    if (!OPENAI_API_KEY) {
+    if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json(
-        { error: 'Clé API non configurée' },
+        { error: 'Clé API OpenAI non configurée' },
         { status: 500 }
       );
     }
 
-    const response = await fetch(OPENAI_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-4.1-nano',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.7,
-      }),
+    console.log(`Traitement de la requête IA pour le restaurant ${restaurantId}`);
+    console.log(`Prompt: ${prompt.substring(0, 150)}...`);
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4.1-nano",
+      messages: [
+        {
+          role: "system",
+          content: "Tu es un expert culinaire et conseiller en restauration. Ta mission est d'aider les restaurateurs à améliorer leur offre, optimiser leur menu et suivre les tendances du secteur. Fournis des conseils personnalisés, précis et pratiques en fonction du contexte du restaurant."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      temperature: 0.7,
     });
 
-    if (!response.ok) {
-      const error = await response.json();
-      return NextResponse.json(
-        { error: error.error?.message || 'Erreur API' },
-        { status: response.status }
-      );
-    }
+    // Récupérer la réponse générée
+    const response = completion.choices[0].message.content;
 
-    const data = await response.json();
-    return NextResponse.json(data);
+    console.log(`Réponse générée: ${response?.substring(0, 150)}...`);
+
+    return NextResponse.json(completion);
   } catch (error) {
-    console.error('Erreur:', error);
+    console.error('Erreur lors de la génération de la réponse:', error);
     return NextResponse.json(
-      { error: 'Erreur serveur' },
+      { error: 'Erreur serveur lors de la communication avec l\'API OpenAI' },
       { status: 500 }
     );
   }
